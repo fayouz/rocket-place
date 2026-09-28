@@ -5,6 +5,7 @@ Toutes les évolutions notables de Rocket Place. Format [Keep a Changelog](https
 ## [Non publié]
 
 ### Ajouté
+- Ménage par lieu (`CleaningTask`) : fenêtre, statut, personne attribuée, checklist recopiée depuis le modèle du lieu, notes, photos avant/après/dégât rangées dans le dossier Rocket Cloud du lieu, relevés de stock (mettent à jour `StockLevel`). Création manuelle ou par une application (ex. PMS après un départ) avec `externalRef` idempotente, unique par lieu. Page « Ménage » pour téléphone (ménages du jour et en retard), onglet « Ménage » d'un lieu (planification, checklist), tableau de bord (ménages du jour, en retard), données de démo.
 - Mode suite documenté (Rocket Auth : connexion, sélecteur d'applications, déconnexion ; variables `ROCKET_AUTH_*`, `ROCKET_PUBLIC_URL`, `ROCKET_INTERNAL_URL`).
 - Documents : en mode suite, Rocket Place appelle Rocket Cloud avec un jeton Rocket Auth (client credentials, audience `rocket-cloud`) ; `ROCKET_CLOUD_TOKEN` reste le repli.
 - Les jetons Rocket Auth d'un client lié à une application (ex. `rocket-pms`) ont accès aux routes métier comme un jeton `rpl_…`.
