@@ -9,23 +9,19 @@ use App\Entity\CleaningTask;
 use App\Entity\Connector;
 use App\Entity\Place;
 use App\Entity\SmartLock;
-use App\Entity\StockItem;
-use App\Entity\StockLevel;
 use App\Repository\PlaceRepository;
 use App\Repository\SmartLockRepository;
-use App\Repository\StockItemRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Rocket\Core\Command\DemoSeederInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/** Demo data: two places, their locks, a demo Homey connector, a stock catalogue and one planned access grant,
+/** Demo data: two places, their locks, a demo Homey connector and one planned access grant,
  * a cleaning checklist per place and cleanings (one today, one late). Idempotent. */
 final class PlacesDemoSeeder implements DemoSeederInterface
 {
     public function __construct(
         private readonly PlaceRepository $places,
         private readonly SmartLockRepository $locks,
-        private readonly StockItemRepository $stockItems,
         private readonly AccessGrantService $accessGrants,
         private readonly EntityManagerInterface $em,
     ) {
@@ -56,34 +52,6 @@ final class PlacesDemoSeeder implements DemoSeederInterface
             $this->em->persist($lock2 = new SmartLock(90002));
         }
         $lock2->setName('Vignes - entrée')->setPlace($vignes);
-        $this->em->flush();
-
-        $catalogue = [
-            ['name' => 'Papier toilette', 'asin' => 'B07PGL7C4L', 'reorderQty' => 12, 'subscription' => false],
-            ['name' => 'Liquide vaisselle', 'asin' => 'B08J8L9F7T', 'reorderQty' => 2, 'subscription' => false],
-            ['name' => 'Café dosettes', 'asin' => 'B01N7Y6ZKX', 'reorderQty' => 4, 'subscription' => true],
-            ['name' => 'Sacs poubelle', 'asin' => 'B003AXFHW0', 'reorderQty' => 3, 'subscription' => false],
-        ];
-        $items = [];
-        foreach ($catalogue as $c) {
-            $item = $this->stockItems->findOneBy(['name' => $c['name']]);
-            if (null === $item) {
-                $item = (new StockItem())->setName($c['name'])->setAsin($c['asin'])->setReorderQty($c['reorderQty'])->setSubscription($c['subscription']);
-                $this->em->persist($item);
-            }
-            $items[] = $item;
-        }
-        $this->em->flush();
-
-        foreach ([$port, $vignes] as $place) {
-            foreach ($items as $i => $item) {
-                $existing = $this->em->getRepository(StockLevel::class)->findOneBy(['place' => $place, 'item' => $item]);
-                if (null === $existing) {
-                    $level = $place === $port && 0 === $i ? 'low' : 'ok';
-                    $this->em->persist(new StockLevel($place, $item, $level));
-                }
-            }
-        }
         $this->em->flush();
 
         $existingGrant = $this->em->getRepository(AccessGrant::class)->findOneBy(['place' => $port, 'externalRef' => 'demo-1']);
@@ -123,6 +91,6 @@ final class PlacesDemoSeeder implements DemoSeederInterface
         }
         $this->em->flush();
 
-        $io->text('Rocket Place : 2 lieux, 2 serrures, 1 connecteur, '.\count($items).' articles de stock, 1 autorisation d’accès planifiée, 2 ménages.');
+        $io->text('Rocket Place : 2 lieux, 2 serrures, 1 connecteur, 1 autorisation d’accès planifiée, 2 ménages.');
     }
 }

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { CleaningTask } from '~/types/place'
 
-// Public page of one cleaning (secret link /m/<token>, no account): the cleaner runs its checklist, adds photos,
-// sets the stock levels and notes. Nothing else of the application is reachable from here.
+// Public page of one cleaning (secret link /m/<token>, no account): the cleaner runs its checklist, adds photos
+// and notes. Nothing else of the application is reachable from here.
 definePageMeta({ layout: 'bare', public: true })
 const route = useRoute()
 const token = String(route.params.token)

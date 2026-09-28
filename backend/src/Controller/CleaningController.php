@@ -26,7 +26,7 @@ use Symfony\Component\Uid\Uuid;
 /**
  * Cleanings ("ménage") of places. Planning (create, reschedule, assign, delete) and the checklist template are
  * PLACE_MANAGE (an administrator, or a client application such as a PMS acting for itself); carrying a cleaning out
- * (status, checklist, notes, photos, stock) is open to its assignee — or anyone when unassigned — and to managers.
+ * (status, checklist, notes, photos) is open to its assignee — or anyone when unassigned — and to managers.
  */
 #[IsGranted('PLACE_READ')]
 final class CleaningController extends AbstractController
@@ -144,17 +144,6 @@ final class CleaningController extends AbstractController
         $this->em->flush();
 
         return $this->json($task->toArray(), 201);
-    }
-
-    /** JSON {"stockLevelId": uuid, "level": ok|low|empty}: sets the place's stock level and records it on the cleaning. */
-    #[Route('/api/cleanings/{id}/stock', name: 'api_cleaning_stock', methods: ['POST'], requirements: ['id' => Requirement::UUID])]
-    public function stock(#[MapEntity] CleaningTask $task, Request $request): JsonResponse
-    {
-        $this->assertCanWork($task);
-        $this->work->setStock($task, $request->toArray());
-        $this->em->flush();
-
-        return $this->json($task->toArray());
     }
 
     /** Secret link without account (/m/<token>) of a cleaning, generated on first request. Managers only. */

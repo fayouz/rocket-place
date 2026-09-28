@@ -48,13 +48,10 @@ final class CleaningTest extends WebTestCase
         self::assertCount(0, $this->api('GET', '/api/cleanings?date=2020-01-01', null, $this->bob));
     }
 
-    public function testAssigneeCarriesItOutWithChecklistPhotoAndStock(): void
+    public function testAssigneeCarriesItOutWithChecklistAndPhoto(): void
     {
         $place = $this->api('POST', '/api/places', ['name' => 'Le port'], $this->admin)['id'];
         $this->api('PUT', "/api/places/$place/cleaning-checklist", ['items' => ['Salle de bain']], $this->admin);
-        $item = $this->api('POST', '/api/stock-items', ['name' => 'Café', 'reorderQty' => 4], $this->admin);
-        $level = $this->api('POST', '/api/stock-levels', ['place' => "/api/places/$place", 'item' => "/api/stock-items/{$item['id']}"], $this->admin);
-        $this->assertStatus(201);
         $id = $this->api('POST', "/api/places/$place/cleanings", ['scheduledAt' => (new \DateTimeImmutable('today 10:00'))->format(\DATE_ATOM), 'assigneeEmail' => 'alice@example.org'], $this->admin)['id'];
 
         $this->api('PATCH', "/api/cleanings/$id", ['status' => 'in_progress'], $this->bob);
@@ -68,11 +65,6 @@ final class CleaningTest extends WebTestCase
         self::assertNotNull($task['startedAt']);
         $this->api('PATCH', "/api/cleanings/$id", ['checklist' => [['index' => 5, 'done' => true]]], $this->alice);
         $this->assertStatus(422);
-
-        $task = $this->api('POST', "/api/cleanings/$id/stock", ['stockLevelId' => $level['id'], 'level' => 'low'], $this->alice);
-        $this->assertStatus(200);
-        self::assertSame('low', $task['stockReports'][0]['level']);
-        self::assertSame('low', $this->api('GET', "/api/stock-levels/{$level['id']}", null, $this->alice)['level']);
 
         $png = tempnam(sys_get_temp_dir(), 'photo');
         file_put_contents($png, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { CleaningTask, StockItem, StockLevel } from '~/types/place'
+import type { CleaningTask } from '~/types/place'
 
 // One cleaning, made for a phone: status buttons, checklist, photos (before/after/damage, straight from the camera,
-// with thumbnails and a lightbox), stock levels of the place and notes. Every change is saved at once and the updated
+// with thumbnails and a lightbox) and notes. Every change is saved at once and the updated
 // task is emitted. With "token" it works through the secret link without account (/api/public/cleaning/<token>);
 // with "manage" (administrator) it also shows the secret link to copy or regenerate.
 const props = defineProps<{ task: CleaningTask, token?: string, manage?: boolean, startOpen?: boolean }>()
@@ -17,19 +17,6 @@ const notes = ref(props.task.notes ?? '')
 watch(() => props.task.notes, v => notes.value = v ?? '')
 
 const doneCount = computed(() => props.task.checklist.filter(c => c.done).length)
-
-// Stock levels of the place: given by the public view, else loaded (catalogue + levels) when the card opens.
-const items = ref<StockItem[]>([])
-const loaded = ref<StockLevel[]>([])
-const levels = computed<{ id: string, name: string, level: string }[]>(() => props.task.stock
-  ?? loaded.value.map(l => ({ id: l.id, name: items.value.find(i => `/api/stock-items/${i.id}` === l.item)?.name ?? '?', level: l.level })))
-watch(open, async (v) => {
-  if (v && !props.token && !loaded.value.length) {
-    const [i, l] = await Promise.all([api<StockItem[]>('/api/stock-items'), api<StockLevel[]>('/api/stock-levels', { query: { place: `/api/places/${props.task.placeId}` } })])
-    items.value = i
-    loaded.value = l
-  }
-}, { immediate: true })
 
 const base = computed(() => props.token ? `/api/public/cleaning/${encodeURIComponent(props.token)}` : `/api/cleanings/${props.task.id}`)
 async function save(path: string, body: Record<string, unknown> | FormData, method: 'PATCH' | 'POST' = 'PATCH') {
@@ -50,12 +37,6 @@ async function save(path: string, body: Record<string, unknown> | FormData, meth
 const setStatus = (status: string) => save('', { status })
 const check = (index: number, done: boolean) => save('', { checklist: [{ index, done }] })
 const saveNotes = () => notes.value !== (props.task.notes ?? '') && save('', { notes: notes.value })
-
-async function setStock(level: { id: string, level: string }, value: string) {
-  await save('/stock', { stockLevelId: level.id, level: value }, 'POST')
-  const l = loaded.value.find(x => x.id === level.id)
-  if (l) l.level = value as StockLevel['level']
-}
 
 // Photo thumbnails, loaded as blobs (the API needs the Authorization header, or the secret link), freed on unmount.
 const thumbs = reactive<Record<string, string>>({})
@@ -156,20 +137,6 @@ async function upload(event: Event, moment: string) {
             <img v-if="lightbox && thumbs[lightbox]" :src="thumbs[lightbox]" alt="Photo du ménage" class="max-h-[75vh] w-full object-contain">
           </template>
         </UModal>
-      </section>
-
-      <section>
-        <h3 class="mb-2 text-sm font-semibold">Stock</h3>
-        <div v-for="l in levels" :key="l.id" class="flex min-h-11 items-center justify-between gap-2">
-          <span class="text-sm">{{ l.name }}</span>
-          <div class="flex gap-1">
-            <UButton
-              v-for="lvl in ['ok', 'low', 'empty']" :key="lvl" size="sm" :color="l.level === lvl ? STOCK_LEVEL_COLOR[lvl] : 'neutral'"
-              :variant="l.level === lvl ? 'solid' : 'outline'" :label="STOCK_LEVEL_LABEL[lvl]" :disabled="busy" @click="setStock(l, lvl)"
-            />
-          </div>
-        </div>
-        <p v-if="!levels.length" class="text-xs text-muted">Aucun article suivi pour ce lieu.</p>
       </section>
 
       <section>

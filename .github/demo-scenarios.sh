@@ -34,8 +34,7 @@ curl -fsS $FRONT/api/dashboard -H "Authorization: Bearer $TOKEN" \
 DEMO_TOKEN=$(grep -o 'rpl_demo_[a-z_]*' compose.demo.yaml | head -1)
 curl -fsS $FRONT/api/me -H "Authorization: Bearer $DEMO_TOKEN" -H 'X-Impersonate-User: admin@example.org' \
   | jq -e '.user.email == "admin@example.org" and (.roles | index("ROLE_ADMIN") | not)'
-# Rocket Place: the demo places, their locks and the planned access grant, plus the stock catalogue
+# Rocket Place: the demo places, their locks and the planned access grant
 PORT=$(curl -fsS $FRONT/api/places -H "Authorization: Bearer $ALICE" -H "Accept: application/json" | jq -r '.[] | select(.name == "Le port") | .id')
 curl -fsS $FRONT/api/places/$PORT/locks -H "Authorization: Bearer $ALICE" | jq -e '.demo and ([.locks[].id] == [90001])'
 curl -fsS $FRONT/api/places/$PORT/access-grants -H "Authorization: Bearer $ALICE" | jq -e '([.[] | select(.externalRef == "demo-1")] | length) == 1'
-curl -fsS $FRONT/api/stock-items -H "Authorization: Bearer $ALICE" | jq -e '(length) >= 4'

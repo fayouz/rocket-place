@@ -83,21 +83,6 @@ export interface Lock {
   provider: string
 }
 
-export interface StockItem {
-  id: string
-  name: string
-  asin: string | null
-  reorderQty: number
-  subscription: boolean
-}
-
-export interface StockLevel {
-  id: string
-  place: string // IRI
-  item: string // IRI
-  level: 'ok' | 'low' | 'empty'
-}
-
 export type CleaningStatus = 'todo' | 'in_progress' | 'done' | 'cancelled'
 
 export interface CleaningTask {
@@ -114,11 +99,9 @@ export interface CleaningTask {
   notes: string | null
   checklist: { label: string, done: boolean }[]
   photos: { fileId: string, name: string, moment: 'before' | 'after' | 'damage', at: string }[]
-  stockReports: { stockLevelId: string, item: string, level: 'ok' | 'low' | 'empty', at: string }[]
   startedAt: string | null
   completedAt: string | null
-  /** Public view (secret link) only: stock levels of the place, and when the link expires. */
-  stock?: { id: string, name: string, level: 'ok' | 'low' | 'empty' }[]
+  /** Public view (secret link) only: when the link expires. */
   expiresAt?: string
 }
 

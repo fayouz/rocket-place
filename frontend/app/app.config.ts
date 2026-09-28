@@ -14,7 +14,7 @@ export default defineAppConfig({
     name: 'Rocket Place',
     icon: 'i-lucide-map-pin',
     // Login page subtitle.
-    tagline: 'Tes lieux : serrures connectées, domotique, documents et stock — sans PMS.',
+    tagline: 'Tes lieux : serrures connectées, domotique, documents — sans PMS (le stock est dans Rocket Stock).',
     // Public pages (no account): a cleaning by its secret link.
     publicPaths: ['/m/'],
     // Main menu: the domain pages ("label" entries start a group).

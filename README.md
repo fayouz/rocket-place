@@ -1,6 +1,6 @@
 # Rocket Place
 
-Gestion de **lieux** (logements, locaux, terrains…), utilisable sans aucun PMS : **lieux** (nom, adresse, couleur, coordonnées), **connecteurs/domotique** pluggables (Homey, Home Assistant, Nuki, Rocket Cloud, service web), **serrures connectées** (état, batterie, historique) avec des **autorisations d'accès** génériques (code clavier temporaire, planifié puis envoyé sur action explicite), **documents** par lieu dans Rocket Cloud, un **stock de consommables/équipement** par lieu et le **ménage** (tâches par lieu, checklist, photos, relevés de stock ; créables par un PMS). Brique du Middleware Rocket, sur le socle [rocket-core](https://github.com/fayouz/rocket-core).
+Gestion de **lieux** (logements, locaux, terrains…), utilisable sans aucun PMS : **lieux** (nom, adresse, couleur, coordonnées), **connecteurs/domotique** pluggables (Homey, Home Assistant, Nuki, Rocket Cloud, service web), **serrures connectées** (état, batterie, historique) avec des **autorisations d'accès** génériques (code clavier temporaire, planifié puis envoyé sur action explicite), **documents** par lieu dans Rocket Cloud et le **ménage** (tâches par lieu, checklist, photos, relevés de stock ; créables par un PMS). Brique du Middleware Rocket, sur le socle [rocket-core](https://github.com/fayouz/rocket-core). Le stock est dans [rocket-stock](https://github.com/fayouz/rocket-stock).
 
 | Dossier | Stack |
 |---|---|
@@ -64,9 +64,8 @@ Environnement complet (Auth, Cloud, Place, PMS) : `compose.suite.yaml` de rocket
 - **Serrures** : état, batterie, historique, rattachées à un lieu ; un lieu peut router l'état et/ou l'écriture de code vers un connecteur (Home Assistant, Homey, Nuki secondaire) ou garder le compte Nuki historique.
 - **Autorisations d'accès** (`AccessGrant`) : génériques (pas liées à un PMS), avec une référence externe libre optionnelle (ex. un id de réservation côté client) ; cycle **planifiée → envoyée (code écrit sur la serrure, action explicite) → révoquée**.
 - **Documents** par lieu dans Rocket Cloud (dossier créé à la demande, contrôle d'appartenance à l'arborescence du lieu).
-- **Stock** de consommables/équipement : catalogue global d'articles (nom, ASIN Amazon, quantité de réassort, abonnement), niveau (OK/Bas/Vide) suivi par lieu.
-- **Ménage** : tâches par lieu (fenêtre, statut, personne attribuée), checklist recopiée du modèle du lieu, photos avant/après/dégât dans Rocket Cloud, relevés de stock ; page téléphone « Mes ménages du jour » ; création idempotente par une application via `externalRef` (`POST /api/places/{id}/cleanings`) ; lien secret sans compte `/m/<jeton>` limité au ménage ; e-mails via Rocket Mailer (attribution, retards, bilan du jour ; `ROCKET_MAILER_URL`, `ROCKET_MAILER_TOKEN`, `ROCKET_MAILER_MAILBOX`, `ROCKET_MAILER_SENDER`, démo sans réseau).
-- **Tableau de bord** : nombre de lieux/serrures, alertes de stock, ménages du jour et en retard, prochaines autorisations d'accès ; état des services Nuki et Homey.
+- **Ménage** : tâches par lieu (fenêtre, statut, personne attribuée), checklist recopiée du modèle du lieu, photos avant/après/dégât dans Rocket Cloud ; page téléphone « Mes ménages du jour » ; création idempotente par une application via `externalRef` (`POST /api/places/{id}/cleanings`) ; lien secret sans compte `/m/<jeton>` limité au ménage ; e-mails via Rocket Mailer (attribution, retards, bilan du jour ; `ROCKET_MAILER_URL`, `ROCKET_MAILER_TOKEN`, `ROCKET_MAILER_MAILBOX`, `ROCKET_MAILER_SENDER`, démo sans réseau).
+- **Tableau de bord** : nombre de lieux/serrures, ménages du jour et en retard, prochaines autorisations d'accès ; état des services Nuki et Homey.
 - **API** pour les applications externes (jeton `rpl_…`), par exemple un PMS côté client.
 
 ## Gitflow

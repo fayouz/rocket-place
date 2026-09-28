@@ -26,10 +26,11 @@ final class ApplicationAccessTest extends WebTestCase
         $this->assertStatus(200);
         $this->api('GET', "/api/places/{$place['id']}/locks", null, $app);
         $this->assertStatus(200);
-        $this->api('GET', '/api/stock-items', null, $app);
-        $this->assertStatus(200);
 
         // Lock configuration stays an administrator's job.
+        // Stock moved to Rocket Stock: no stock route left here.
+        $this->api('GET', '/api/stock-items', null, $admin);
+        $this->assertStatus(404);
         $this->api('POST', '/api/locks/sync', [], $admin);
         $this->api('PUT', '/api/locks/90001', ['place' => $place['id']], $app);
         $this->assertStatus(403);

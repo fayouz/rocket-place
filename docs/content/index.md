@@ -1,6 +1,6 @@
 ---
 title: Rocket Place
-description: Tes lieux — serrures connectées, domotique, documents, stock et ménage — sans PMS.
+description: Tes lieux — serrures connectées, domotique, documents et ménage — sans PMS.
 seo:
   title: Rocket Place — Documentation
 ---
@@ -11,7 +11,7 @@ orientation: horizontal
 title: Tes lieux, leurs serrures, leur entretien. Au même endroit.
 ---
 #description
-Rocket Place gère tes **lieux** (logements, locaux, terrains…) sans PMS : **serrures connectées** et **autorisations d'accès**, **domotique** par connecteurs, **documents** dans Rocket Cloud, **stock** de consommables et **ménage** (checklist, photos, lien sans compte, e-mails). Un PMS peut le piloter par l'API.
+Rocket Place gère tes **lieux** (logements, locaux, terrains…) sans PMS : **serrures connectées** et **autorisations d'accès**, **domotique** par connecteurs, **documents** dans Rocket Cloud et **ménage** (checklist, photos, lien sans compte, e-mails). Un PMS peut le piloter par l'API.
 
 #links
   :::u-button

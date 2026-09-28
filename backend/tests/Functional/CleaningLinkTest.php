@@ -39,8 +39,6 @@ final class CleaningLinkTest extends WebTestCase
     {
         [$place, $id] = $this->cleaning();
         [, $other] = $this->cleaning();
-        $item = $this->api('POST', '/api/stock-items', ['name' => 'Café'], $this->admin);
-        $level = $this->api('POST', '/api/stock-levels', ['place' => "/api/places/$place", 'item' => "/api/stock-items/{$item['id']}"], $this->admin);
 
         $this->api('GET', "/api/cleanings/$id/link", null, $this->alice);
         $this->assertStatus(403);
@@ -53,7 +51,7 @@ final class CleaningLinkTest extends WebTestCase
         $view = $this->api('GET', "/api/public/cleaning/$token");
         $this->assertStatus(200);
         self::assertSame($id, $view['id']);
-        self::assertSame('Café', $view['stock'][0]['name']);
+        self::assertArrayNotHasKey('stock', $view);
         self::assertArrayNotHasKey('externalRef', $view);
         $headers = $this->client->getResponse()->headers;
         self::assertStringContainsString('no-store', (string) $headers->get('Cache-Control'));
@@ -66,8 +64,6 @@ final class CleaningLinkTest extends WebTestCase
         self::assertSame('Ménage', $view['label']);
         self::assertNull($view['assignee']);
 
-        $this->api('POST', "/api/public/cleaning/$token/stock", ['stockLevelId' => $level['id'], 'level' => 'empty']);
-        $this->assertStatus(200);
         $png = tempnam(sys_get_temp_dir(), 'photo');
         file_put_contents($png, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));
         $this->client->request('POST', "/api/public/cleaning/$token/photos", ['moment' => 'damage'], ['file' => new UploadedFile($png, 'x.png', 'image/png', null, true)], ['HTTP_ACCEPT' => 'application/json']);

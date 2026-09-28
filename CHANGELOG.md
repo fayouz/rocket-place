@@ -4,6 +4,9 @@ Toutes les évolutions notables de Rocket Place. Format [Keep a Changelog](https
 
 ## [Non publié]
 
+### Retiré
+- Stock (`StockItem`, `StockLevel`, `/api/stock-items`, `/api/stock-levels`, onglet Stock, relevés de stock des ménages `/api/cleanings/{id}/stock` et `/api/public/cleaning/{token}/stock`, indicateur « Stock à réassortir ») : déplacé dans [Rocket Stock](https://github.com/fayouz/rocket-stock), qui garde les mêmes routes. Migration : suppression de `stock_item`, `stock_level` et `cleaning_task.stock_reports`.
+
 ### Ajouté
 - Ménage par lieu (`CleaningTask`) : fenêtre, statut, personne attribuée, checklist recopiée depuis le modèle du lieu, notes, photos avant/après/dégât rangées dans le dossier Rocket Cloud du lieu, relevés de stock (mettent à jour `StockLevel`). Création manuelle ou par une application (ex. PMS après un départ) avec `externalRef` idempotente, unique par lieu. Page « Ménage » pour téléphone (ménages du jour et en retard), onglet « Ménage » d'un lieu (planification, checklist), tableau de bord (ménages du jour, en retard), données de démo.
 - Ménage : vignettes des photos et agrandissement ; choix de la personne parmi les comptes (`GET /api/cleaning-assignees`, admin) ; **lien secret sans compte** `/m/<jeton>` limité à un ménage (jeton HMAC 128 bits, expire le lendemain de l'échéance, copie/régénération/révocation par l'admin, `/api/public/cleaning/{token}` limité en débit, `no-store`/`noindex`) ; **e-mails via Rocket Mailer** (`MailerClient`, repli démo sans réseau, mode suite par jeton Rocket Auth) : attribution avec le lien, ménages en retard (8 h) et bilan du jour (20 h) aux administrateurs, désactivables (`/api/cleaning-settings`). Variables `ROCKET_MAILER_URL`, `ROCKET_MAILER_TOKEN`, `ROCKET_MAILER_MAILBOX`, `ROCKET_MAILER_SENDER`. Migration : `cleaning_task.link_salt`.

@@ -4,15 +4,13 @@ namespace App\Cleaning;
 
 use App\Cloud\DocumentProviderRegistry;
 use App\Entity\CleaningTask;
-use App\Entity\StockLevel;
-use App\Repository\StockLevelRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Carrying a cleaning out (status, checklist, notes, photos, stock levels), shared by the signed-in API
+ * Carrying a cleaning out (status, checklist, notes, photos), shared by the signed-in API
  * (CleaningController) and the secret link without account (PublicCleaningController). Callers check who may act.
  */
 final class CleaningWork
@@ -22,7 +20,6 @@ final class CleaningWork
 
     public function __construct(
         private readonly DocumentProviderRegistry $documentProviders,
-        private readonly StockLevelRepository $stockLevels,
         private readonly EntityManagerInterface $em,
     ) {
     }
@@ -88,24 +85,4 @@ final class CleaningWork
         return $this->documentProviders->providerFor($place)->content(substr($fileId, 5));
     }
 
-    /** @param array<string, mixed> $body {"stockLevelId": uuid, "level": ok|low|empty} */
-    public function setStock(CleaningTask $task, array $body): void
-    {
-        $levelId = (string) ($body['stockLevelId'] ?? '');
-        $level = Uuid::isValid($levelId) ? $this->em->find(StockLevel::class, Uuid::fromString($levelId)) : null;
-        if (null === $level || $level->getPlace() !== $task->getPlace()) {
-            throw new HttpException(404, 'Article de stock inconnu pour ce lieu.');
-        }
-        if (!\in_array($body['level'] ?? null, StockLevel::LEVELS, true)) {
-            throw new HttpException(422, 'Niveau invalide ('.implode(', ', StockLevel::LEVELS).').');
-        }
-        $level->setLevel($body['level']);
-        $task->addStockReport($level, new \DateTimeImmutable());
-    }
-
-    /** @return list<array{id: string, name: string, level: string}> stock levels of the cleaning's place */
-    public function stockView(CleaningTask $task): array
-    {
-        return array_map(static fn (StockLevel $l) => ['id' => $l->getId()->toRfc4122(), 'name' => $l->getItem()->getName(), 'level' => $l->getLevel()], $this->stockLevels->forPlace($task->getPlace()));
-    }
 }

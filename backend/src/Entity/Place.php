@@ -16,7 +16,7 @@ use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * A place (logement, local, terrain...) usable without any PMS: locks, connectors/plugins, documents and stock
+ * A place (logement, local, terrain...) usable without any PMS: locks, connectors/plugins and documents
  * are all attached to a place. Created directly through the API (POST /api/places), renamable/movable here.
  */
 #[ORM\Entity(repositoryClass: PlaceRepository::class)]

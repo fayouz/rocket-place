@@ -12,8 +12,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * A cleaning of a place ("ménage"): a window (scheduledAt → dueAt), a status, an optional assignee (a user), a
- * checklist copied from the place's template at creation, notes, photos (Rocket Cloud file ids in the place's folder)
- * and stock reports (levels set on the place's StockLevel during the cleaning). Created by hand or by a client app
+ * checklist copied from the place's template at creation, notes and photos (Rocket Cloud file ids in the place's
+ * folder). Created by hand or by a client app
  * (e.g. a PMS after a departure) with an `externalRef`, unique per place, which makes creation idempotent.
  */
 #[ORM\Entity(repositoryClass: CleaningTaskRepository::class)]
@@ -66,10 +66,6 @@ class CleaningTask
     /** @var list<array{fileId: string, name: string, moment: string, at: string}> */
     #[ORM\Column(type: Types::JSON)]
     private array $photos = [];
-
-    /** @var list<array{stockLevelId: string, item: string, level: string, at: string}> */
-    #[ORM\Column(type: Types::JSON)]
-    private array $stockReports = [];
 
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $startedAt = null;
@@ -148,13 +144,6 @@ class CleaningTask
         return $this;
     }
 
-    public function addStockReport(StockLevel $level, \DateTimeImmutable $at): static
-    {
-        $this->stockReports[] = ['stockLevelId' => $level->getId()->toRfc4122(), 'item' => $level->getItem()->getName(), 'level' => $level->getLevel(), 'at' => $at->format(\DATE_ATOM)];
-
-        return $this;
-    }
-
     public function isLate(\DateTimeImmutable $now): bool
     {
         return \in_array($this->status, [self::TODO, self::IN_PROGRESS], true) && ($this->dueAt ?? $this->scheduledAt->setTime(23, 59, 59)) < $now;
@@ -171,7 +160,7 @@ class CleaningTask
             'status' => $this->status, 'late' => $this->isLate($now),
             'assignee' => null === $this->assignee ? null : ['id' => $this->assignee->getId()->toRfc4122(), 'email' => $this->assignee->getEmail(), 'name' => $this->assignee->getDisplayName()],
             'externalRef' => $this->externalRef, 'notes' => $this->notes,
-            'checklist' => $this->checklist, 'photos' => $this->photos, 'stockReports' => $this->stockReports,
+            'checklist' => $this->checklist, 'photos' => $this->photos,
             'startedAt' => $this->startedAt?->format(\DATE_ATOM), 'completedAt' => $this->completedAt?->format(\DATE_ATOM),
         ];
     }

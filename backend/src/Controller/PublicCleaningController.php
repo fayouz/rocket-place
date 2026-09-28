@@ -17,7 +17,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * Secret link of a cleaning, without account (/m/<token> in the interface, /api/public/cleaning/<token> here): the
- * cleaner runs that cleaning's checklist, sets its status and notes, adds photos and sets the place's stock levels,
+ * cleaner runs that cleaning's checklist, sets its status and notes, adds photos,
  * and nothing else (no other cleaning, place, file or user). Rate-limited per IP, never cached nor indexed. The link
  * expires the day after the cleaning (CleaningLinkSigner::expiresAt), and an administrator can regenerate or revoke it.
  */
@@ -72,17 +72,6 @@ final class PublicCleaningController extends AbstractController
         return new Response($content, 200, ['Content-Type' => 'application/octet-stream', 'Cache-Control' => 'no-store, private', 'X-Robots-Tag' => 'noindex, nofollow', 'Referrer-Policy' => 'no-referrer']);
     }
 
-    /** JSON {"stockLevelId": uuid, "level": ok|low|empty}, a stock level of this cleaning's place. */
-    #[Route('/api/public/cleaning/{token}/stock', name: 'api_public_cleaning_stock', methods: ['POST'], requirements: ['token' => self::TOKEN])]
-    public function stock(string $token, Request $request): JsonResponse
-    {
-        $task = $this->task($token, $request);
-        $this->work->setStock($task, $request->toArray());
-        $this->em->flush();
-
-        return $this->view($task);
-    }
-
     private function task(string $token, Request $request): CleaningTask
     {
         $this->limiter->hit($request);
@@ -102,7 +91,6 @@ final class PublicCleaningController extends AbstractController
         // Only what the cleaner needs: no external reference, no assignee e-mail.
         unset($data['externalRef']);
         $data['assignee'] = null === $data['assignee'] ? null : ['name' => $data['assignee']['name']];
-        $data['stock'] = $this->work->stockView($task);
         $data['expiresAt'] = CleaningLinkSigner::expiresAt($task)->format(\DATE_ATOM);
         $response = $this->json($data, $status);
         $response->headers->set('Cache-Control', 'no-store, private');
