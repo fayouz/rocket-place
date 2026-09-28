@@ -65,7 +65,7 @@ Environnement complet (Auth, Cloud, Place, PMS) : `compose.suite.yaml` de rocket
 - **Autorisations d'accès** (`AccessGrant`) : génériques (pas liées à un PMS), avec une référence externe libre optionnelle (ex. un id de réservation côté client) ; cycle **planifiée → envoyée (code écrit sur la serrure, action explicite) → révoquée**.
 - **Documents** par lieu dans Rocket Cloud (dossier créé à la demande, contrôle d'appartenance à l'arborescence du lieu).
 - **Stock** de consommables/équipement : catalogue global d'articles (nom, ASIN Amazon, quantité de réassort, abonnement), niveau (OK/Bas/Vide) suivi par lieu.
-- **Ménage** : tâches par lieu (fenêtre, statut, personne attribuée), checklist recopiée du modèle du lieu, photos avant/après/dégât dans Rocket Cloud, relevés de stock ; page téléphone « Mes ménages du jour » ; création idempotente par une application via `externalRef` (`POST /api/places/{id}/cleanings`).
+- **Ménage** : tâches par lieu (fenêtre, statut, personne attribuée), checklist recopiée du modèle du lieu, photos avant/après/dégât dans Rocket Cloud, relevés de stock ; page téléphone « Mes ménages du jour » ; création idempotente par une application via `externalRef` (`POST /api/places/{id}/cleanings`) ; lien secret sans compte `/m/<jeton>` limité au ménage ; e-mails via Rocket Mailer (attribution, retards, bilan du jour ; `ROCKET_MAILER_URL`, `ROCKET_MAILER_TOKEN`, `ROCKET_MAILER_MAILBOX`, `ROCKET_MAILER_SENDER`, démo sans réseau).
 - **Tableau de bord** : nombre de lieux/serrures, alertes de stock, ménages du jour et en retard, prochaines autorisations d'accès ; état des services Nuki et Homey.
 - **API** pour les applications externes (jeton `rpl_…`), par exemple un PMS côté client.
 
