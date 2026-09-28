@@ -13,10 +13,10 @@ x-api-env: &api-env
   SETUP_TOKEN: ${SETUP_TOKEN:-}
   # Encrypts the secrets stored in the database (empty: derived from APP_SECRET).
   SECRETS_ENCRYPTION_KEY: ${SECRETS_ENCRYPTION_KEY:-}
+  # Master key of the secrets vault (integration tokens, Administration → Secrets): rocket:secrets:generate-key.
+  ROCKET_SECRETS_KEY: ${ROCKET_SECRETS_KEY:-}
   # Nuki (smart locks, legacy account) and Rocket Cloud (documents, legacy account). Empty: demo data.
-  NUKI_API_TOKEN: ${NUKI_API_TOKEN:-}
   ROCKET_CLOUD_URL: ${ROCKET_CLOUD_URL:-}
-  ROCKET_CLOUD_TOKEN: ${ROCKET_CLOUD_TOKEN:-}
   # Suite mode: sign-in through Rocket Auth (see rocket-core). Empty ROCKET_AUTH_URL: standalone.
   ROCKET_AUTH_URL: ${ROCKET_AUTH_URL:-}
   ROCKET_AUTH_INTERNAL_URL: ${ROCKET_AUTH_INTERNAL_URL:-}

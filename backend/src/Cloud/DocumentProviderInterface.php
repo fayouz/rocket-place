@@ -7,7 +7,7 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 /**
  * A store of a place's documents (Rocket Cloud today). Implemented by App\Cloud\CloudClient; resolved per
  * property by App\Cloud\DocumentProviderRegistry from the place's own connector (App\Domotique\RocketCloudPlugin),
- * falling back to the single legacy ROCKET_CLOUD_URL/ROCKET_CLOUD_TOKEN.
+ * falling back to the single legacy ROCKET_CLOUD_URL/secret rocket.cloud.token.
  */
 interface DocumentProviderInterface
 {

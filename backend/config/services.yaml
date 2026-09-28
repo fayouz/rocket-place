@@ -1,10 +1,7 @@
 parameters:
     env(UPDATE_REPOSITORY): 'fayouz/rocket-place'
-    env(NUKI_API_TOKEN): ''
     env(ROCKET_CLOUD_URL): ''
-    env(ROCKET_CLOUD_TOKEN): ''
     env(ROCKET_MAILER_URL): ''
-    env(ROCKET_MAILER_TOKEN): ''
     env(ROCKET_MAILER_MAILBOX): ''
     env(ROCKET_MAILER_SENDER): ''
 
@@ -13,11 +10,11 @@ services:
         autowire: true
         autoconfigure: true
         bind:
-            $nukiApiToken: '%env(NUKI_API_TOKEN)%'
+            # Tokens read at call time from the secrets vault (App\Secrets\IntegrationSecrets).
+            $nukiApiToken: '@App\Secrets\IntegrationSecrets'
             $cloudUrl: '%env(ROCKET_CLOUD_URL)%'
-            $cloudToken: '%env(ROCKET_CLOUD_TOKEN)%'
+            $cloudToken: '@App\Secrets\IntegrationSecrets'
             $mailerUrl: '%env(ROCKET_MAILER_URL)%'
-            $mailerToken: '%env(ROCKET_MAILER_TOKEN)%'
             $mailerMailbox: '%env(ROCKET_MAILER_MAILBOX)%'
             $demoMailerPath: '%kernel.project_dir%/var/demo-mailer-%kernel.environment%.json'
             $storagePath: '%kernel.project_dir%/var/demo-cloud.json'

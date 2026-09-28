@@ -3,6 +3,7 @@
 namespace App\Tests\Functional;
 
 use App\Tests\ApiTestTrait;
+use Rocket\Core\Secrets\SecretVault;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
@@ -80,19 +81,26 @@ final class DomotiqueTest extends WebTestCase
         $port = $this->seed();
         $created = $this->api('POST', "/api/places/$port/connectors", [
             'pluginId' => 'homey', 'name' => 'Homey salon',
-            'config' => ['homeyUrl' => 'http://192.168.1.20', 'secretVar' => 'CONNECTOR_HOMEY_SALON'],
+            'config' => ['homeyUrl' => 'http://192.168.1.20', 'secret' => 'homey.salon.api_key'],
         ], $this->admin);
         $this->assertStatus(201);
-        self::assertSame('CONNECTOR_HOMEY_SALON', $created['config']['secretVar'], 'only the .env variable name is stored, never the secret value');
-        self::assertFalse($created['secrets']['secretVar'], 'the variable is not set in .env in this test environment');
+        self::assertSame('homey.salon.api_key', $created['config']['secret'], 'only the name of the vault secret is stored, never the value');
+        self::assertFalse($created['secrets']['secret'], 'the secret is not in the vault yet');
+
+        static::getContainer()->get(SecretVault::class)->set('homey.salon.api_key', 'homey-local-key-123456');
+        $shown = $this->api('GET', "/api/places/$port/connectors", null, $this->admin);
+        self::assertTrue($shown[0]['secrets']['secret'], 'the secret is now in the vault');
+        self::assertStringNotContainsString('homey-local-key', (string) $this->client->getResponse()->getContent(), 'the value is never exposed');
 
         // Public address rejected for a local Homey
         $this->api('POST', "/api/places/$port/connectors", ['pluginId' => 'homey', 'config' => ['homeyUrl' => 'https://example.org']], $this->admin);
         $this->assertStatus(400);
 
-        // Secret name must start with CONNECTOR_
-        $this->api('POST', "/api/places/$port/connectors", ['pluginId' => 'homey', 'config' => ['secretVar' => 'HOMEY_API_KEY']], $this->admin);
-        $this->assertStatus(400);
+        // A connector can never use the integration secrets of the app itself (e.g. the Rocket Mailer token), nor an invalid name.
+        foreach (['rocket.mailer.token', 'nuki.api_token', 'bad name'] as $name) {
+            $this->api('POST', "/api/places/$port/connectors", ['pluginId' => 'homey', 'config' => ['secret' => $name]], $this->admin);
+            $this->assertStatus(400);
+        }
     }
 
     /** Demo place; returns its id. */

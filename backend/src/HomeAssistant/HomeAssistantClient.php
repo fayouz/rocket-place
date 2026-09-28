@@ -2,7 +2,7 @@
 
 namespace App\HomeAssistant;
 
-use App\Domotique\SecretEnv;
+use App\Domotique\ConnectorSecrets;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -10,7 +10,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Home Assistant REST API (https://developers.home-assistant.io/docs/api/rest/): GET /api/states for entities
  * (locks, sensors...), POST /api/services/{domain}/{service} to call a service (used to send a lock keypad code,
  * see App\Lock\HomeAssistantProvider). Bearer long-lived access token, https unless the host is on the local
- * network (App\Domotique\SecretEnv::isPrivateHost). Without a configured address/token: demo states, so this class
+ * network (App\Domotique\ConnectorSecrets::isPrivateHost). Without a configured address/token: demo states, so this class
  * never makes a real network call in tests.
  */
 final class HomeAssistantClient
@@ -18,13 +18,15 @@ final class HomeAssistantClient
     private const TIMEOUT = 8;
     private const MAX_BYTES = 2 * 1024 * 1024;
 
-    public function __construct(private readonly HttpClientInterface $http)
-    {
+    public function __construct(
+        private readonly HttpClientInterface $http,
+        private readonly ConnectorSecrets $connectorSecrets,
+    ) {
     }
 
     public function isConfigured(array $config): bool
     {
-        return '' !== trim($config['baseUrl'] ?? '') && '' !== trim($config['secretVar'] ?? '');
+        return '' !== trim($config['baseUrl'] ?? '') && '' !== ConnectorSecrets::nameIn($config);
     }
 
     /** @param array<string, string> $config @return list<array{entity_id: string, state: string, attributes: array<string, mixed>}> */
@@ -66,10 +68,10 @@ final class HomeAssistantClient
         if (!\is_array($u) || !isset($u['host'])) {
             throw new HttpException(400, 'Adresse de Home Assistant invalide.');
         }
-        if ('http' === ($u['scheme'] ?? '') && !SecretEnv::isPrivateHost((string) $u['host'])) {
+        if ('http' === ($u['scheme'] ?? '') && !ConnectorSecrets::isPrivateHost((string) $u['host'])) {
             throw new HttpException(400, 'Authentification refusée en http vers Internet : utilise une adresse https ou une adresse locale.');
         }
-        $token = SecretEnv::read(trim($config['secretVar'] ?? ''), 'Jeton Home Assistant');
+        $token = $this->connectorSecrets->read(ConnectorSecrets::nameIn($config), 'Jeton Home Assistant');
         try {
             $response = $this->http->request($method, $url, [
                 'headers' => ['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json', 'Content-Type' => 'application/json'],

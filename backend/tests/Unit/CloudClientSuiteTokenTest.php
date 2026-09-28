@@ -11,7 +11,7 @@ use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
-/** Place → Rocket Cloud: token of Rocket Auth in suite mode, static ROCKET_CLOUD_TOKEN otherwise. No network. */
+/** Place → Rocket Cloud: token of Rocket Auth in suite mode, static token (secret rocket.cloud.token) otherwise. No network. */
 final class CloudClientSuiteTokenTest extends TestCase
 {
     /** @var list<string> */

@@ -2,7 +2,7 @@
 
 namespace App\Nuki;
 
-/** Fictitious locks (no NUKI_API_TOKEN), one per demo place. */
+/** Fictitious locks (no secret nuki.api_token), one per demo place. */
 final class DemoNuki
 {
     /** @return list<array<string, mixed>> */

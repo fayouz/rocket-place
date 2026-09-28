@@ -14,8 +14,10 @@ final class WebServicePlugin implements PluginInterface
     private const TIMEOUT = 15;
     private const MAX_BYTES = 1024 * 1024;
 
-    public function __construct(private readonly HttpClientInterface $http)
-    {
+    public function __construct(
+        private readonly HttpClientInterface $http,
+        private readonly ConnectorSecrets $connectorSecrets,
+    ) {
     }
 
     public function id(): string { return 'webservice'; }
@@ -30,15 +32,15 @@ final class WebServicePlugin implements PluginInterface
         return [
             ['key' => 'baseUrl', 'label' => 'Adresse de base', 'type' => 'url', 'required' => true, 'placeholder' => 'https://api.exemple.fr/v1'],
             ['key' => 'infoPath', 'label' => 'Chemin des informations (GET, JSON)', 'type' => 'text', 'placeholder' => '/status'],
-            ['key' => 'secretVar', 'label' => 'Variable .env du jeton (Bearer)', 'type' => 'text', 'secret' => true, 'placeholder' => 'CONNECTOR_MON_SERVICE'],
+            ['key' => 'secret', 'label' => 'Jeton Bearer (coffre des secrets)', 'type' => 'secret', 'secret' => true, 'defaultName' => 'webservice.mon_service.token'],
         ];
     }
 
     public function validate(array $config, string $placeId, ?string $connectorId): array
     {
         $this->checkUrl($config['baseUrl'] ?? '', 'Adresse de base');
-        if ('' !== ($config['secretVar'] ?? '') && !SecretEnv::isValidName($config['secretVar'])) {
-            throw new HttpException(400, 'Le nom de variable doit commencer par CONNECTOR_ (majuscules, chiffres, _).');
+        if ('' !== ConnectorSecrets::nameIn($config) && !ConnectorSecrets::isValidName(ConnectorSecrets::nameIn($config))) {
+            throw new HttpException(400, 'Choisissez un secret du coffre (Administration → Secrets) ; les secrets propres à l’application sont interdits.');
         }
 
         return $config;
@@ -79,13 +81,13 @@ final class WebServicePlugin implements PluginInterface
     private function request(array $config, string $url): string
     {
         $headers = ['Accept' => 'application/json'];
-        $secretVar = trim($config['secretVar'] ?? '');
-        if ('' !== $secretVar) {
+        $secretName = ConnectorSecrets::nameIn($config);
+        if ('' !== $secretName) {
             $u = parse_url($url);
-            if (('http' === ($u['scheme'] ?? '')) && !SecretEnv::isPrivateHost((string) ($u['host'] ?? ''))) {
+            if (('http' === ($u['scheme'] ?? '')) && !ConnectorSecrets::isPrivateHost((string) ($u['host'] ?? ''))) {
                 throw new HttpException(400, 'Authentification refusée en http vers Internet : utilise une adresse https.');
             }
-            $headers['Authorization'] = 'Bearer '.SecretEnv::read($secretVar, 'Jeton du service');
+            $headers['Authorization'] = 'Bearer '.$this->connectorSecrets->read($secretName, 'Jeton du service');
         }
         try {
             $response = $this->http->request('GET', $url, ['headers' => $headers, 'timeout' => self::TIMEOUT, 'max_redirects' => 0]);

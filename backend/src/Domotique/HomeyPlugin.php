@@ -34,7 +34,7 @@ final class HomeyPlugin implements PluginInterface, LockCapablePluginInterface
     {
         return [
             ['key' => 'homeyUrl', 'label' => 'Adresse locale du Homey', 'type' => 'url', 'placeholder' => 'http://192.168.1.20', 'help' => 'Réseau local uniquement (LAN, VPN) : jamais une adresse publique.'],
-            ['key' => 'secretVar', 'label' => 'Variable .env de la clé d’API', 'type' => 'text', 'secret' => true, 'placeholder' => 'CONNECTOR_HOMEY_SALON'],
+            ['key' => 'secret', 'label' => 'Clé d’API locale Homey (coffre des secrets)', 'type' => 'secret', 'secret' => true, 'defaultName' => 'homey.salon.api_key'],
         ];
     }
 
@@ -46,12 +46,12 @@ final class HomeyPlugin implements PluginInterface, LockCapablePluginInterface
             if (!\is_string($host) || !preg_match('#^https?://#', $url)) {
                 throw new \Symfony\Component\HttpKernel\Exception\HttpException(400, 'Adresse locale du Homey invalide.');
             }
-            if (!SecretEnv::isPrivateHost($host)) {
+            if (!ConnectorSecrets::isPrivateHost($host)) {
                 throw new \Symfony\Component\HttpKernel\Exception\HttpException(400, 'L’adresse doit être sur le réseau local (192.168.x.x, 10.x.x.x, .local…).');
             }
         }
-        if ('' !== ($config['secretVar'] ?? '') && !SecretEnv::isValidName($config['secretVar'])) {
-            throw new \Symfony\Component\HttpKernel\Exception\HttpException(400, 'Le nom de variable doit commencer par CONNECTOR_ (majuscules, chiffres, _).');
+        if ('' !== ConnectorSecrets::nameIn($config) && !ConnectorSecrets::isValidName(ConnectorSecrets::nameIn($config))) {
+            throw new \Symfony\Component\HttpKernel\Exception\HttpException(400, 'Choisissez un secret du coffre (Administration → Secrets) ; les secrets propres à l’application sont interdits.');
         }
 
         return $config;
