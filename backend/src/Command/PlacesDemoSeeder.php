@@ -17,11 +17,16 @@ use App\Repository\StockItemRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Rocket\Core\Command\DemoSeederInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Uid\Uuid;
 
 /** Demo data: two places, their locks, a demo Homey connector, a stock catalogue and one planned access grant,
  * a cleaning checklist per place and cleanings (one today, one late). Idempotent. */
 final class PlacesDemoSeeder implements DemoSeederInterface
 {
+    /** Fixed ids of the demo places, shared by the demo seeders of Clean, Stock, Linen, PMS and Cast. */
+    public const PORT = '0192f7c4-0000-7000-8000-000000000001';
+    public const VIGNES = '0192f7c4-0000-7000-8000-000000000002';
+
     public function __construct(
         private readonly PlaceRepository $places,
         private readonly SmartLockRepository $locks,
@@ -33,15 +38,15 @@ final class PlacesDemoSeeder implements DemoSeederInterface
 
     public function seed(array $users, SymfonyStyle $io): void
     {
-        $port = $this->places->findOneBy(['name' => 'Le port']);
+        $port = $this->demoPlace(self::PORT, 'Le port');
         if (null === $port) {
-            $port = (new Place())->setName('Le port')->setAddress('12 quai des Pêcheurs, 17000 La Rochelle')->setColor('blue')->setCoordinates(46.1591, -1.1520);
+            $port = (new Place(Uuid::fromString(self::PORT)))->setName('Le port')->setAddress('12 quai des Pêcheurs, 17000 La Rochelle')->setColor('blue')->setCoordinates(46.1591, -1.1520);
             $this->em->persist($port);
             $this->em->persist((new Connector($port, 'homey'))->setName('Homey (démo)'));
         }
-        $vignes = $this->places->findOneBy(['name' => 'Les vignes']);
+        $vignes = $this->demoPlace(self::VIGNES, 'Les vignes');
         if (null === $vignes) {
-            $vignes = (new Place())->setName('Les vignes')->setAddress('4 chemin des Vignes, 33000 Bordeaux')->setColor('green')->setCoordinates(44.8378, -0.5792);
+            $vignes = (new Place(Uuid::fromString(self::VIGNES)))->setName('Les vignes')->setAddress('4 chemin des Vignes, 33000 Bordeaux')->setColor('green')->setCoordinates(44.8378, -0.5792);
             $this->em->persist($vignes);
         }
         $this->em->flush();
@@ -124,5 +129,43 @@ final class PlacesDemoSeeder implements DemoSeederInterface
         $this->em->flush();
 
         $io->text('Rocket Place : 2 lieux, 2 serrures, 1 connecteur, '.\count($items).' articles de stock, 1 autorisation d’accès planifiée, 2 ménages.');
+    }
+
+    /**
+     * The demo place with the fixed $id; a demo place of the same name seeded earlier with a random id (before the ids
+     * were fixed) is re-keyed to $id, every reference to it included, so the other bricks' demo data line up.
+     */
+    private function demoPlace(string $id, string $name): ?Place
+    {
+        $place = $this->places->find(Uuid::fromString($id));
+        if (null !== $place) {
+            return $place;
+        }
+        $legacy = $this->places->findOneBy(['name' => $name]);
+        if (null === $legacy) {
+            return null;
+        }
+        $old = $legacy->getId()->toRfc4122();
+        $conn = $this->em->getConnection();
+        $meta = $this->em->getClassMetadata(Place::class);
+        $columns = array_values(array_diff(array_map(fn (string $f) => $meta->getColumnName($f), $meta->getFieldNames()), ['id']));
+        $this->em->detach($legacy);
+        $conn->transactional(function () use ($conn, $meta, $columns, $id, $old): void {
+            $list = implode(', ', $columns);
+            $conn->executeStatement(\sprintf('INSERT INTO %1$s (id, %2$s) SELECT ?, %2$s FROM %1$s WHERE id = ?', $meta->getTableName(), $list), [$id, $old]);
+            foreach ($this->em->getMetadataFactory()->getAllMetadata() as $m) {
+                foreach ($m->getAssociationMappings() as $assoc) {
+                    if (Place::class !== $assoc['targetEntity'] || !$assoc['isOwningSide'] || !isset($assoc['joinColumns'])) {
+                        continue;
+                    }
+                    foreach ($assoc['joinColumns'] as $jc) {
+                        $conn->executeStatement(\sprintf('UPDATE %s SET %s = ? WHERE %s = ?', $m->getTableName(), $jc['name'], $jc['name']), [$id, $old]);
+                    }
+                }
+            }
+            $conn->executeStatement(\sprintf('DELETE FROM %s WHERE id = ?', $meta->getTableName()), [$old]);
+        });
+
+        return $this->places->find(Uuid::fromString($id));
     }
 }
