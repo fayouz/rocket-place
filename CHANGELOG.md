@@ -4,6 +4,9 @@ Toutes les évolutions notables de Rocket Place. Format [Keep a Changelog](https
 
 ## [Non publié]
 
+### Retiré
+- Ménage déplacé dans Rocket Clean (fayouz/rocket-clean) : entités `CleaningTask`/`CleaningChecklistItem` (migration supprimant `cleaning_task` et `cleaning_checklist_item`), contrôleurs, lien secret `/m/<jeton>`, e-mails Rocket Mailer (`ROCKET_MAILER_*`), pages et onglet Ménage, indicateurs du tableau de bord, données de démo. Les API `/api/places`, `/api/stock-items`, `/api/stock-levels` et documents restent, utilisées par Rocket Clean.
+
 ### Ajouté
 - Ménage par lieu (`CleaningTask`) : fenêtre, statut, personne attribuée, checklist recopiée depuis le modèle du lieu, notes, photos avant/après/dégât rangées dans le dossier Rocket Cloud du lieu, relevés de stock (mettent à jour `StockLevel`). Création manuelle ou par une application (ex. PMS après un départ) avec `externalRef` idempotente, unique par lieu. Page « Ménage » pour téléphone (ménages du jour et en retard), onglet « Ménage » d'un lieu (planification, checklist), tableau de bord (ménages du jour, en retard), données de démo.
 - Ménage : vignettes des photos et agrandissement ; choix de la personne parmi les comptes (`GET /api/cleaning-assignees`, admin) ; **lien secret sans compte** `/m/<jeton>` limité à un ménage (jeton HMAC 128 bits, expire le lendemain de l'échéance, copie/régénération/révocation par l'admin, `/api/public/cleaning/{token}` limité en débit, `no-store`/`noindex`) ; **e-mails via Rocket Mailer** (`MailerClient`, repli démo sans réseau, mode suite par jeton Rocket Auth) : attribution avec le lien, ménages en retard (8 h) et bilan du jour (20 h) aux administrateurs, désactivables (`/api/cleaning-settings`). Variables `ROCKET_MAILER_URL`, `ROCKET_MAILER_TOKEN`, `ROCKET_MAILER_MAILBOX`, `ROCKET_MAILER_SENDER`. Migration : `cleaning_task.link_salt`.

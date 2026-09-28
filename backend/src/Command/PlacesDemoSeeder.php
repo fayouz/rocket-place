@@ -4,8 +4,6 @@ namespace App\Command;
 
 use App\Code\AccessGrantService;
 use App\Entity\AccessGrant;
-use App\Entity\CleaningChecklistItem;
-use App\Entity\CleaningTask;
 use App\Entity\Connector;
 use App\Entity\Place;
 use App\Entity\SmartLock;
@@ -18,8 +16,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Rocket\Core\Command\DemoSeederInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/** Demo data: two places, their locks, a demo Homey connector, a stock catalogue and one planned access grant,
- * a cleaning checklist per place and cleanings (one today, one late). Idempotent. */
+/** Demo data: two places, their locks, a demo Homey connector, a stock catalogue and one planned access grant.
+ * Idempotent. (Cleanings live in Rocket Clean.) */
 final class PlacesDemoSeeder implements DemoSeederInterface
 {
     public function __construct(
@@ -93,36 +91,6 @@ final class PlacesDemoSeeder implements DemoSeederInterface
             $this->accessGrants->plan($port, $lock1, 'Sofia Rossi', $from, $until, 'demo-1');
         }
 
-        $checklists = [
-            [$port, ['Draps et serviettes changés', 'Salle de bain et WC', 'Cuisine et vaisselle', 'Poubelles descendues', 'Machine à café détartrée']],
-            [$vignes, ['Draps et serviettes changés', 'Salle de bain et WC', 'Terrasse balayée', 'Poubelles descendues']],
-        ];
-        foreach ($checklists as [$place, $labels]) {
-            if ([] === $this->em->getRepository(CleaningChecklistItem::class)->findBy(['place' => $place])) {
-                foreach ($labels as $i => $label) {
-                    $this->em->persist(new CleaningChecklistItem($place, $label, $i));
-                }
-            }
-        }
-        $cleaner = null; // the first demo user who is not an administrator, else anyone
-        foreach ($users as $user) {
-            if (!\in_array('ROLE_ADMIN', $user->getRoles(), true)) {
-                $cleaner = $user;
-                break;
-            }
-        }
-        $cleaner ??= [] === $users ? null : reset($users);
-        $cleanings = [
-            [$port, 'demo-menage-1', 'Ménage après Sofia Rossi', new \DateTimeImmutable('today 11:00'), new \DateTimeImmutable('today 16:00'), $checklists[0][1]],
-            [$vignes, 'demo-menage-2', 'Ménage de fin de séjour', new \DateTimeImmutable('-1 day 11:00'), new \DateTimeImmutable('-1 day 16:00'), $checklists[1][1]],
-        ];
-        foreach ($cleanings as [$place, $ref, $label, $at, $due, $labels]) {
-            if (null === $this->em->getRepository(CleaningTask::class)->findOneBy(['place' => $place, 'externalRef' => $ref])) {
-                $this->em->persist((new CleaningTask($place, $label, $at, $labels, $ref))->setDueAt($due)->setAssignee($cleaner));
-            }
-        }
-        $this->em->flush();
-
-        $io->text('Rocket Place : 2 lieux, 2 serrures, 1 connecteur, '.\count($items).' articles de stock, 1 autorisation d’accès planifiée, 2 ménages.');
+        $io->text('Rocket Place : 2 lieux, 2 serrures, 1 connecteur, '.\count($items).' articles de stock, 1 autorisation d’accès planifiée.');
     }
 }

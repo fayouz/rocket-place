@@ -29,7 +29,3 @@ export const LOCK_ACTIONS: Record<number, string> = { 1: 'Déverrouillage', 2: '
 export const batteryIcon = (b: number | null) => b === null ? 'i-lucide-battery' : b <= 20 ? 'i-lucide-battery-low' : b <= 60 ? 'i-lucide-battery-medium' : 'i-lucide-battery-full'
 export const STOCK_LEVEL_LABEL: Record<string, string> = { ok: 'OK', low: 'Bas', empty: 'Vide' }
 export const STOCK_LEVEL_COLOR: Record<string, 'success' | 'warning' | 'error'> = { ok: 'success', low: 'warning', empty: 'error' }
-export const CLEANING_STATUS_LABEL: Record<string, string> = { todo: 'À faire', in_progress: 'En cours', done: 'Fait', cancelled: 'Annulé' }
-export const CLEANING_STATUS_COLOR: Record<string, 'neutral' | 'info' | 'success' | 'error'> = { todo: 'neutral', in_progress: 'info', done: 'success', cancelled: 'error' }
-export const PHOTO_MOMENT_LABEL: Record<string, string> = { before: 'Avant', after: 'Après', damage: 'Dégât' }
-export const hourFr = (d: string) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })

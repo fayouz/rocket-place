@@ -15,13 +15,10 @@ export default defineAppConfig({
     icon: 'i-lucide-map-pin',
     // Login page subtitle.
     tagline: 'Tes lieux : serrures connectées, domotique, documents et stock — sans PMS.',
-    // Public pages (no account): a cleaning by its secret link.
-    publicPaths: ['/m/'],
     // Main menu: the domain pages ("label" entries start a group).
     navigation: [
       { label: 'Lieux', type: 'label' },
       { label: 'Tous les lieux', icon: 'i-lucide-map-pin', to: '/places', exact: true },
-      { label: 'Ménage', icon: 'i-lucide-sparkles', to: '/menage' },
     ] as { label: string, icon?: string, to?: string, type?: 'label', exact?: boolean, exactQuery?: boolean, admin?: boolean }[],
     // Extra entries of the Administration menu.
     adminNavigation: [

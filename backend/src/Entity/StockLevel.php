@@ -20,7 +20,7 @@ use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * Whether a place tracks a stock item, and its current level (ok/low/empty), set by whoever does the cleaning.
+ * Whether a place tracks a stock item, and its current level (ok/low/empty), set by hand or by Rocket Clean during a cleaning.
  * One row = one tracked article for one place; deleting the row means the place no longer tracks that article.
  */
 #[ORM\Entity(repositoryClass: StockLevelRepository::class)]
