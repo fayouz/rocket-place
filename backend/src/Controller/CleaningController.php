@@ -2,18 +2,19 @@
 
 namespace App\Controller;
 
-use App\Cloud\DocumentProviderRegistry;
+use App\Cleaning\CleaningLinkSigner;
+use App\Cleaning\CleaningNotifier;
+use App\Cleaning\CleaningSettings;
+use App\Cleaning\CleaningWork;
 use App\Entity\CleaningChecklistItem;
 use App\Entity\CleaningTask;
 use App\Entity\Place;
-use App\Entity\StockLevel;
 use App\Repository\CleaningChecklistItemRepository;
 use App\Repository\CleaningTaskRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Rocket\Core\Entity\User;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -30,13 +31,12 @@ use Symfony\Component\Uid\Uuid;
 #[IsGranted('PLACE_READ')]
 final class CleaningController extends AbstractController
 {
-    private const PHOTO_TYPES = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/heic' => 'heic'];
-    private const PHOTO_MAX_BYTES = 15 * 1024 * 1024;
-
     public function __construct(
         private readonly CleaningTaskRepository $tasks,
         private readonly CleaningChecklistItemRepository $checklistItems,
-        private readonly DocumentProviderRegistry $documentProviders,
+        private readonly CleaningWork $work,
+        private readonly CleaningNotifier $notifier,
+        private readonly CleaningSettings $settings,
         private readonly EntityManagerInterface $em,
     ) {
     }
@@ -87,6 +87,7 @@ final class CleaningController extends AbstractController
         $this->applyPlanning($task, $body);
         $this->em->persist($task);
         $this->em->flush();
+        $this->notifyAssignee($task, null);
 
         return $this->json($task->toArray(), 201);
     }
@@ -106,6 +107,7 @@ final class CleaningController extends AbstractController
     {
         $this->assertCanWork($task);
         $body = $request->toArray();
+        $previousAssignee = $task->getAssignee();
         if (array_intersect(['label', 'scheduledAt', 'dueAt', 'assigneeEmail', 'assigneeId'], array_keys($body))) {
             $this->denyAccessUnlessGranted('PLACE_MANAGE');
             if (isset($body['label']) && '' !== trim((string) $body['label'])) {
@@ -116,24 +118,9 @@ final class CleaningController extends AbstractController
             }
             $this->applyPlanning($task, $body);
         }
-        if (\array_key_exists('status', $body)) {
-            if (!\in_array($body['status'], CleaningTask::STATUSES, true)) {
-                throw new HttpException(422, 'Statut invalide ('.implode(', ', CleaningTask::STATUSES).').');
-            }
-            $task->setStatus($body['status'], new \DateTimeImmutable());
-        }
-        if (\array_key_exists('notes', $body)) {
-            $notes = trim((string) $body['notes']);
-            $task->setNotes('' === $notes ? null : mb_substr($notes, 0, 5000));
-        }
-        foreach ((array) ($body['checklist'] ?? []) as $check) {
-            try {
-                $task->checkItem((int) ($check['index'] ?? -1), (bool) ($check['done'] ?? false));
-            } catch (\OutOfRangeException $e) {
-                throw new HttpException(422, $e->getMessage());
-            }
-        }
+        $this->work->apply($task, $body);
         $this->em->flush();
+        $this->notifyAssignee($task, $previousAssignee);
 
         return $this->json($task->toArray());
     }
@@ -153,31 +140,7 @@ final class CleaningController extends AbstractController
     public function photo(#[MapEntity] CleaningTask $task, Request $request): JsonResponse
     {
         $this->assertCanWork($task);
-        $file = $request->files->get('file');
-        if (!$file instanceof UploadedFile || !$file->isValid()) {
-            throw new HttpException(400, 'Aucune photo envoyée.');
-        }
-        $moment = (string) $request->request->get('moment', 'after');
-        if (!\in_array($moment, CleaningTask::PHOTO_MOMENTS, true)) {
-            throw new HttpException(422, 'Moment invalide ('.implode(', ', CleaningTask::PHOTO_MOMENTS).').');
-        }
-        $extension = self::PHOTO_TYPES[(string) $file->getMimeType()] ?? throw new HttpException(422, 'Seules les images (jpeg, png, webp, heic) sont acceptées.');
-        if ($file->getSize() > self::PHOTO_MAX_BYTES) {
-            throw new HttpException(422, 'Photo trop lourde (15 Mo au plus).');
-        }
-        if (\count($task->getPhotos()) >= CleaningTask::MAX_PHOTOS) {
-            throw new HttpException(422, 'Nombre maximal de photos atteint pour ce ménage.');
-        }
-        $now = new \DateTimeImmutable();
-        // Generated name, never the phone's: when, which cleaning, which moment.
-        $name = sprintf('menage-%s-%s-%s.%s', $now->format('Ymd-His'), substr($task->getId()->toRfc4122(), -8), $moment, $extension);
-        $renamed = new UploadedFile($file->getPathname(), $name, $file->getMimeType(), null, true);
-        $place = $task->getPlace();
-        $cloud = $this->documentProviders->providerFor($place);
-        $folderId = $cloud->ensureFolder($place->getId()->toRfc4122(), $place->getCloudFolderId() ?? '', $place->getName());
-        $place->setCloudFolderId($folderId);
-        $item = $cloud->upload($folderId, $renamed);
-        $task->addPhoto('file:'.$item['id'], $item['name'], $moment, $now);
+        $this->work->addPhoto($task, $request->files->get('file'), (string) $request->request->get('moment', 'after'));
         $this->em->flush();
 
         return $this->json($task->toArray(), 201);
@@ -188,20 +151,71 @@ final class CleaningController extends AbstractController
     public function stock(#[MapEntity] CleaningTask $task, Request $request): JsonResponse
     {
         $this->assertCanWork($task);
-        $body = $request->toArray();
-        $levelId = (string) ($body['stockLevelId'] ?? '');
-        $level = Uuid::isValid($levelId) ? $this->em->find(StockLevel::class, Uuid::fromString($levelId)) : null;
-        if (null === $level || $level->getPlace() !== $task->getPlace()) {
-            throw new HttpException(404, 'Article de stock inconnu pour ce lieu.');
-        }
-        if (!\in_array($body['level'] ?? null, StockLevel::LEVELS, true)) {
-            throw new HttpException(422, 'Niveau invalide ('.implode(', ', StockLevel::LEVELS).').');
-        }
-        $level->setLevel($body['level']);
-        $task->addStockReport($level, new \DateTimeImmutable());
+        $this->work->setStock($task, $request->toArray());
         $this->em->flush();
 
         return $this->json($task->toArray());
+    }
+
+    /** Secret link without account (/m/<token>) of a cleaning, generated on first request. Managers only. */
+    #[Route('/api/cleanings/{id}/link', name: 'api_cleaning_link', methods: ['GET'], requirements: ['id' => Requirement::UUID])]
+    #[IsGranted('PLACE_MANAGE')]
+    public function link(#[MapEntity] CleaningTask $task): JsonResponse
+    {
+        $url = $this->notifier->linkUrl($task);
+        $this->em->flush();
+
+        return $this->linkView($task, $url);
+    }
+
+    /** New secret link: the previous one stops working. */
+    #[Route('/api/cleanings/{id}/link', name: 'api_cleaning_link_regenerate', methods: ['POST'], requirements: ['id' => Requirement::UUID])]
+    #[IsGranted('PLACE_MANAGE')]
+    public function regenerateLink(#[MapEntity] CleaningTask $task): JsonResponse
+    {
+        $task->regenerateLink();
+        $url = $this->notifier->linkUrl($task);
+        $this->em->flush();
+
+        return $this->linkView($task, $url);
+    }
+
+    #[Route('/api/cleanings/{id}/link', name: 'api_cleaning_link_revoke', methods: ['DELETE'], requirements: ['id' => Requirement::UUID])]
+    #[IsGranted('PLACE_MANAGE')]
+    public function revokeLink(#[MapEntity] CleaningTask $task): JsonResponse
+    {
+        $task->revokeLink();
+        $this->em->flush();
+
+        return $this->json(['ok' => true]);
+    }
+
+    /** Users a cleaning can be assigned to (enabled accounts of rocket-core). Administrators only. */
+    #[Route('/api/cleaning-assignees', name: 'api_cleaning_assignees', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function assignees(): JsonResponse
+    {
+        $users = $this->em->getRepository(User::class)->findBy(['enabled' => true], ['email' => 'ASC']);
+
+        return $this->json(array_map(static fn (User $u) => ['id' => $u->getId()->toRfc4122(), 'email' => $u->getEmail(), 'name' => $u->getDisplayName()], $users));
+    }
+
+    /** E-mail notifications of cleanings: {"assignment": bool, "late": bool, "summary": bool}. Administrators only. */
+    #[Route('/api/cleaning-settings', name: 'api_cleaning_settings', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function settings(): JsonResponse
+    {
+        return $this->json($this->settings->all());
+    }
+
+    #[Route('/api/cleaning-settings', name: 'api_cleaning_settings_update', methods: ['PUT'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function updateSettings(Request $request): JsonResponse
+    {
+        $this->settings->update($request->toArray());
+        $this->em->flush();
+
+        return $this->json($this->settings->all());
     }
 
     #[Route('/api/places/{id}/cleaning-checklist', name: 'api_place_cleaning_checklist', methods: ['GET'], requirements: ['id' => Requirement::UUID])]
@@ -259,6 +273,21 @@ final class CleaningController extends AbstractController
         }
         if (\array_key_exists('notes', $body) && null === $task->getNotes() && '' !== trim((string) $body['notes'])) {
             $task->setNotes(mb_substr(trim((string) $body['notes']), 0, 5000));
+        }
+    }
+
+    private function linkView(CleaningTask $task, string $url): JsonResponse
+    {
+        return $this->json(['url' => $url, 'path' => parse_url($url, \PHP_URL_PATH), 'expiresAt' => CleaningLinkSigner::expiresAt($task)->format(\DATE_ATOM)]);
+    }
+
+    /** E-mail to the assignee when the cleaning gets a (new) one; flushes the link salt it may create. */
+    private function notifyAssignee(CleaningTask $task, ?User $previous): void
+    {
+        if (null !== $task->getAssignee() && $task->getAssignee() !== $previous) {
+            $actor = $this->getUser();
+            $this->notifier->assigned($task, $actor instanceof User ? $actor : null);
+            $this->em->flush();
         }
     }
 

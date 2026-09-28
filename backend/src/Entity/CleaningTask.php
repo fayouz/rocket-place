@@ -77,6 +77,10 @@ class CleaningTask
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $completedAt = null;
 
+    /** Salt of the secret link (/m/<token>, CleaningLinkSigner); null: no link (never generated, or revoked). */
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $linkSalt = null;
+
     use TrackedTrait;
 
     /** @param list<string> $checklist */
@@ -108,6 +112,13 @@ class CleaningTask
     public function getChecklist(): array { return $this->checklist; }
     /** @return list<array{fileId: string, name: string, moment: string, at: string}> */
     public function getPhotos(): array { return $this->photos; }
+
+    public function getLinkSalt(): ?string { return $this->linkSalt; }
+
+    /** New salt: a new secret link, the previous one stops working. */
+    public function regenerateLink(): static { $this->linkSalt = bin2hex(random_bytes(16)); return $this; }
+
+    public function revokeLink(): static { $this->linkSalt = null; return $this; }
 
     public function setStatus(string $status, \DateTimeImmutable $now): static
     {
