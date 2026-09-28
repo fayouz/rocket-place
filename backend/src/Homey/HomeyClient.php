@@ -2,12 +2,12 @@
 
 namespace App\Homey;
 
-use App\Domotique\SecretEnv;
+use App\Domotique\ConnectorSecrets;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Homey Pro, LOCAL access only in this port (address + CONNECTOR_… API key): read-only, list of devices and their
+ * Homey Pro, LOCAL access only in this port (address + API key from the secrets vault): read-only, list of devices and their
  * capability values. No command is ever sent (v0.2 keeps the "Domotique" tab read-only, as in the source app).
  * Without a configured address/key: demo devices (never a real network call), which also keeps functional tests offline.
  */
@@ -15,19 +15,21 @@ final class HomeyClient
 {
     private const TIMEOUT = 8;
 
-    public function __construct(private readonly HttpClientInterface $http)
-    {
+    public function __construct(
+        private readonly HttpClientInterface $http,
+        private readonly ConnectorSecrets $connectorSecrets,
+    ) {
     }
 
     /** @param array<string, string> $config @return list<array{id: string, name: string, class: string, available: bool, capabilities: list<array{id: string, title: string, value: mixed, units: ?string}>}> */
     public function devices(array $config): array
     {
         $url = trim($config['homeyUrl'] ?? '');
-        $secretVar = trim($config['secretVar'] ?? '');
-        if ('' === $url || '' === $secretVar) {
+        $secretName = ConnectorSecrets::nameIn($config);
+        if ('' === $url || '' === $secretName) {
             return DemoHomey::devices();
         }
-        $key = SecretEnv::read($secretVar, 'Clé d’API Homey');
+        $key = $this->connectorSecrets->read($secretName, 'Clé d’API Homey');
         $raw = $this->request($url, $key, '/api/manager/devices/device');
         if (!\is_array($raw)) {
             throw new HttpException(502, 'Réponse de Homey inattendue.');

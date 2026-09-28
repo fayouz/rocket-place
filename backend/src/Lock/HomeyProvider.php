@@ -2,6 +2,7 @@
 
 namespace App\Lock;
 
+use App\Domotique\ConnectorSecrets;
 use App\Entity\SmartLock;
 use App\Homey\HomeyClient;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -15,7 +16,7 @@ final class HomeyProvider implements LockProviderInterface
     }
 
     public function id(): string { return 'homey'; }
-    public function isDemo(): bool { return '' === trim($this->config['homeyUrl'] ?? '') || '' === trim($this->config['secretVar'] ?? ''); }
+    public function isDemo(): bool { return '' === trim($this->config['homeyUrl'] ?? '') || '' === ConnectorSecrets::nameIn($this->config); }
 
     public function listLocks(): array
     {

@@ -11,7 +11,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Rocket Cloud as a connector plugin: another Rocket Cloud instance/token can be attached per place. The
- * historical single `ROCKET_CLOUD_URL`/`ROCKET_CLOUD_TOKEN` env vars stay supported as the fallback used for a
+ * historical single `ROCKET_CLOUD_URL`/`secret rocket.cloud.token` env vars stay supported as the fallback used for a
  * property that has no connector (App\Cloud\DocumentProviderRegistry), so existing places keep working unchanged.
  */
 final class RocketCloudPlugin implements PluginInterface, DocumentCapablePluginInterface
@@ -19,6 +19,7 @@ final class RocketCloudPlugin implements PluginInterface, DocumentCapablePluginI
     public function __construct(
         private readonly HttpClientInterface $http,
         private readonly DemoCloud $demoCloud,
+        private readonly ConnectorSecrets $connectorSecrets,
     ) {
     }
 
@@ -33,7 +34,7 @@ final class RocketCloudPlugin implements PluginInterface, DocumentCapablePluginI
     {
         return [
             ['key' => 'url', 'label' => 'Adresse de Rocket Cloud', 'type' => 'url', 'required' => true, 'placeholder' => 'https://cloud.exemple.fr'],
-            ['key' => 'secretVar', 'label' => 'Variable .env du jeton Rocket Cloud', 'type' => 'text', 'required' => true, 'secret' => true, 'placeholder' => 'CONNECTOR_ROCKET_CLOUD_SALON'],
+            ['key' => 'secret', 'label' => 'Jeton Rocket Cloud (coffre des secrets)', 'type' => 'secret', 'required' => true, 'secret' => true, 'defaultName' => 'rocketcloud.salon.token'],
         ];
     }
 
@@ -42,8 +43,8 @@ final class RocketCloudPlugin implements PluginInterface, DocumentCapablePluginI
         if ('' === ($config['url'] ?? '') || !preg_match('#^https?://#', $config['url'])) {
             throw new HttpException(400, '« Adresse de Rocket Cloud » : adresse invalide.');
         }
-        if ('' === ($config['secretVar'] ?? '') || !SecretEnv::isValidName($config['secretVar'])) {
-            throw new HttpException(400, 'Le nom de variable doit commencer par CONNECTOR_ (majuscules, chiffres, _).');
+        if (!ConnectorSecrets::isValidName(ConnectorSecrets::nameIn($config))) {
+            throw new HttpException(400, 'Choisissez un secret du coffre (Administration → Secrets) ; les secrets propres à l’application sont interdits.');
         }
 
         return $config;
@@ -69,7 +70,7 @@ final class RocketCloudPlugin implements PluginInterface, DocumentCapablePluginI
     /** @param array<string, string> $config */
     private function client(array $config): CloudClient
     {
-        $token = SecretEnv::read($config['secretVar'] ?? '', 'Jeton Rocket Cloud');
+        $token = $this->connectorSecrets->read(ConnectorSecrets::nameIn($config), 'Jeton Rocket Cloud');
 
         return new CloudClient($this->http, $this->demoCloud, $config['url'] ?? '', $token);
     }

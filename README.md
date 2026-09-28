@@ -20,7 +20,7 @@ docker compose up -d --build
 - API + OpenAPI : http://localhost:8900/api/docs
 - Démo complète : `docker compose -f compose.yaml -f compose.demo.yaml up -d --build` (voir [demo/README.md](demo/README.md))
 
-Sans `NUKI_API_TOKEN`, l'application tourne sur des **données de démo** (deux lieux fictifs et leurs serrures) : rien n'est lu ni écrit chez Nuki.
+Sans `nuki.api_token` (coffre), l'application tourne sur des **données de démo** (deux lieux fictifs et leurs serrures) : rien n'est lu ni écrit chez Nuki.
 
 ### Développement sans Docker
 
@@ -41,10 +41,10 @@ cd frontend && npm install && NUXT_PUBLIC_API_BASE=http://localhost:8900 npm run
 
 | Variable | Rôle |
 |---|---|
-| `NUKI_API_TOKEN` | Jeton de l'API web Nuki (compte historique) ; le droit `smartlock.auth` est nécessaire pour créer les codes. Vide : démo. |
-| `ROCKET_CLOUD_URL` / `ROCKET_CLOUD_TOKEN` | Compte Rocket Cloud historique pour les documents. Vide : démo. |
+| `nuki.api_token` (coffre) | Jeton de l'API web Nuki (compte historique) ; le droit `smartlock.auth` est nécessaire pour créer les codes. Vide : démo. |
+| `ROCKET_CLOUD_URL` (jeton : secret `rocket.cloud.token`) | Compte Rocket Cloud historique pour les documents. Vide : démo. |
 | `ROCKET_AUTH_URL`, `ROCKET_AUTH_INTERNAL_URL`, `ROCKET_AUTH_CLIENT_ID` (`rocket-place`), `ROCKET_AUTH_CLIENT_SECRET`, `ROCKET_AUTH_ADMIN_GROUP`, `ROCKET_PUBLIC_URL`, `ROCKET_INTERNAL_URL` | Mode suite (voir ci-dessous). `ROCKET_AUTH_URL` vide : mode autonome, inchangé. |
-| `CONNECTOR_*` | Une variable par secret de connecteur (nom choisi à la création du connecteur, jamais la valeur en base). |
+| `CONNECTOR_*` | Transition seulement : anciennes variables des secrets de connecteurs, à importer avec `app:secrets:migrate-env` (secret `connector_*`). |
 
 ## Mode suite (Rocket Auth)
 
@@ -52,7 +52,7 @@ Avec `ROCKET_AUTH_URL`, Rocket Place rejoint la suite Rocket (mécanisme de rock
 
 Appels entre applications (client credentials, `Rocket\Core\Suite\ServiceTokenProvider`) :
 
-- **Place → Rocket Cloud** (documents) : jeton Rocket Auth d'audience `rocket-cloud` à la place de `ROCKET_CLOUD_TOKEN`, qui reste le repli (mode autonome ou Rocket Auth injoignable). Dans Rocket Cloud, un administrateur lie une application au client `rocket-place` (champ « Client Rocket Auth »).
+- **Place → Rocket Cloud** (documents) : jeton Rocket Auth d'audience `rocket-cloud` à la place de `rocket.cloud.token` (coffre), qui reste le repli (mode autonome ou Rocket Auth injoignable). Dans Rocket Cloud, un administrateur lie une application au client `rocket-place` (champ « Client Rocket Auth »).
 - **Rocket PMS → Place** : Place accepte les jetons Rocket Auth d'audience `rocket-place` émis pour un client lié à une application (Administration → Applications, champ « Client Rocket Auth », ex. `rocket-pms`). Ils donnent les mêmes droits qu'un jeton `rpl_…` : routes métier ouvertes par `PlaceScopeGuardListener` / `PlaceAccessVoter`.
 
 Environnement complet (Auth, Cloud, Place, PMS) : `compose.suite.yaml` de rocket-pms.
@@ -65,7 +65,7 @@ Environnement complet (Auth, Cloud, Place, PMS) : `compose.suite.yaml` de rocket
 - **Autorisations d'accès** (`AccessGrant`) : génériques (pas liées à un PMS), avec une référence externe libre optionnelle (ex. un id de réservation côté client) ; cycle **planifiée → envoyée (code écrit sur la serrure, action explicite) → révoquée**.
 - **Documents** par lieu dans Rocket Cloud (dossier créé à la demande, contrôle d'appartenance à l'arborescence du lieu).
 - **Stock** de consommables/équipement : catalogue global d'articles (nom, ASIN Amazon, quantité de réassort, abonnement), niveau (OK/Bas/Vide) suivi par lieu.
-- **Ménage** : tâches par lieu (fenêtre, statut, personne attribuée), checklist recopiée du modèle du lieu, photos avant/après/dégât dans Rocket Cloud, relevés de stock ; page téléphone « Mes ménages du jour » ; création idempotente par une application via `externalRef` (`POST /api/places/{id}/cleanings`) ; lien secret sans compte `/m/<jeton>` limité au ménage ; e-mails via Rocket Mailer (attribution, retards, bilan du jour ; `ROCKET_MAILER_URL`, `ROCKET_MAILER_TOKEN`, `ROCKET_MAILER_MAILBOX`, `ROCKET_MAILER_SENDER`, démo sans réseau).
+- **Ménage** : tâches par lieu (fenêtre, statut, personne attribuée), checklist recopiée du modèle du lieu, photos avant/après/dégât dans Rocket Cloud, relevés de stock ; page téléphone « Mes ménages du jour » ; création idempotente par une application via `externalRef` (`POST /api/places/{id}/cleanings`) ; lien secret sans compte `/m/<jeton>` limité au ménage ; e-mails via Rocket Mailer (attribution, retards, bilan du jour ; `ROCKET_MAILER_URL`, secret `rocket.mailer.token`, `ROCKET_MAILER_MAILBOX`, `ROCKET_MAILER_SENDER`, démo sans réseau).
 - **Tableau de bord** : nombre de lieux/serrures, alertes de stock, ménages du jour et en retard, prochaines autorisations d'accès ; état des services Nuki et Homey.
 - **API** pour les applications externes (jeton `rpl_…`), par exemple un PMS côté client.
 
@@ -86,3 +86,21 @@ Publiées par la CI (workflow réutilisable `docker-images.yml` de rocket-core) 
 ## Gitflow
 
 `main` : production ; `develop` : intégration ; `feature/*` → `develop` (section `[Non publié]` du [CHANGELOG](CHANGELOG.md)) ; `release/*` et `hotfix/*` → `main`, puis tag `vX.Y.Z` créé depuis GitHub.
+
+## Secrets des intégrations (coffre)
+
+Les jetons et clés des intégrations sont gardés **chiffrés en base** dans le coffre de rocket-core (Administration → **Secrets**), plus dans le `.env`. Le code les lit par `App\Secrets\IntegrationSecrets` ; l'API ne renvoie jamais leur valeur (aperçu masqué `••••1234`). Seule la clé maîtresse `ROCKET_SECRETS_KEY` (`php bin/console rocket:secrets:generate-key`) reste dans l'environnement : la sauvegarder hors de la base.
+
+| Ancienne variable | Secret du coffre |
+|---|---|
+| `NUKI_API_TOKEN` | `nuki.api_token` |
+| `CONNECTOR_X` (connecteurs, champ `secretVar`) | `connector_x` (champ `secret` du connecteur, converti par la migration Doctrine) |
+| `ROCKET_CLOUD_TOKEN` | `rocket.cloud.token` |
+| `ROCKET_MAILER_TOKEN` | `rocket.mailer.token` |
+
+Migration d'une instance existante :
+
+1. `php bin/console rocket:secrets:generate-key` → `ROCKET_SECRETS_KEY` dans `.env.local` (ou l'environnement du conteneur) ; `php bin/console doctrine:migrations:migrate`.
+2. `php bin/console app:secrets:migrate-env --dry-run` puis `php bin/console app:secrets:migrate-env` : importe les variables ci-dessus sous leur nom de secret (idempotent, `--overwrite` pour remplacer).
+3. Retirer ces variables du `.env.local` / de l'environnement. Pendant la transition, une variable encore présente sert de repli (avertissement « deprecated » dans les journaux).
+

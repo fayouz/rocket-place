@@ -12,7 +12,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Nuki as a connector plugin: several Nuki accounts (several API tokens) can be attached, one per place or
- * shared. The historical single `NUKI_API_TOKEN` env var stays supported as the fallback used for a App\Entity\
+ * shared. The historical single vault secret `nuki.api_token` (formerly the NUKI_API_TOKEN env var) stays supported as the fallback used for a App\Entity\
  * SmartLock that has no connector (App\Lock\LockProviderRegistry), so existing rows keep working unchanged.
  * Locks state and keypad codes: this is, per research, the ONLY channel able to write a Nuki keypad code (Home
  * Assistant's Nuki integration and Nuki-over-Matter/MQTT cannot).
@@ -22,6 +22,7 @@ final class NukiPlugin implements PluginInterface, LockCapablePluginInterface
     public function __construct(
         private readonly HttpClientInterface $http,
         private readonly CacheInterface $cache,
+        private readonly ConnectorSecrets $connectorSecrets,
     ) {
     }
 
@@ -35,14 +36,14 @@ final class NukiPlugin implements PluginInterface, LockCapablePluginInterface
     public function fields(): array
     {
         return [
-            ['key' => 'secretVar', 'label' => 'Variable .env du jeton API Nuki', 'type' => 'text', 'required' => true, 'secret' => true, 'placeholder' => 'CONNECTOR_NUKI_SALON', 'help' => 'Jeton avec le droit smartlock.auth pour créer des codes.'],
+            ['key' => 'secret', 'label' => 'Jeton API Nuki (coffre des secrets)', 'type' => 'secret', 'required' => true, 'secret' => true, 'defaultName' => 'nuki.salon.api_token', 'help' => 'Jeton avec le droit smartlock.auth pour créer des codes.'],
         ];
     }
 
     public function validate(array $config, string $placeId, ?string $connectorId): array
     {
-        if ('' === ($config['secretVar'] ?? '') || !SecretEnv::isValidName($config['secretVar'])) {
-            throw new HttpException(400, 'Le nom de variable doit commencer par CONNECTOR_ (majuscules, chiffres, _).');
+        if (!ConnectorSecrets::isValidName(ConnectorSecrets::nameIn($config))) {
+            throw new HttpException(400, 'Choisissez un secret du coffre (Administration → Secrets) ; les secrets propres à l’application sont interdits.');
         }
 
         return $config;
@@ -73,7 +74,7 @@ final class NukiPlugin implements PluginInterface, LockCapablePluginInterface
     /** @param array<string, string> $config */
     private function client(array $config): NukiClient
     {
-        $token = SecretEnv::read($config['secretVar'] ?? '', 'Jeton Nuki');
+        $token = $this->connectorSecrets->read(ConnectorSecrets::nameIn($config), 'Jeton Nuki');
 
         return new NukiClient($this->http, $this->cache, $token);
     }

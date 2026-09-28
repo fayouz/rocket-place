@@ -2,6 +2,7 @@
 
 namespace App\Health;
 
+use App\Domotique\ConnectorSecrets;
 use App\Repository\ConnectorRepository;
 use Rocket\Core\Health\ServiceProbeInterface;
 
@@ -21,7 +22,7 @@ final class HomeyProbe implements ServiceProbeInterface
     {
         foreach ($this->connectors->findBy(['pluginId' => 'homey']) as $connector) {
             $config = $connector->getConfig();
-            if ('' === ($config['homeyUrl'] ?? '') || '' === ($config['secretVar'] ?? '')) {
+            if ('' === ($config['homeyUrl'] ?? '') || '' === ConnectorSecrets::nameIn($config)) {
                 continue;
             }
             yield $connector->getName() => [

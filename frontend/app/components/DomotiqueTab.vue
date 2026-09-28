@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Connector, DomotiqueSection, Plugin } from '~/types/place'
+import type { Connector, DomotiqueSection, Plugin, PluginField } from '~/types/place'
 
 // "Domotique" tab of a place: read-only info cards of every enabled connector, and (admin) the connectors themselves.
 const props = defineProps<{ placeId: string }>()
@@ -30,6 +30,14 @@ function openEdit(c: Connector) {
   form.name = c.name
   form.config = { ...c.config }
   showEditor.value = true
+}
+
+/** Secret fields: warn when the chosen secret is not (yet) in the vault. */
+function secretHelp(f: PluginField) {
+  if (f.secret && editing.value && form.config[f.key] && form.config[f.key] === editing.value.config[f.key] && editing.value.secrets[f.key] === false) {
+    return `Secret « ${form.config[f.key]} » absent du coffre : créez-le (Nouveau) ou choisissez-en un autre.`
+  }
+  return f.help
 }
 
 const saving = ref(false)
@@ -151,9 +159,10 @@ async function test(c: Connector) {
           <UFormField label="Nom">
             <UInput v-model="form.name" class="w-full" />
           </UFormField>
-          <UFormField v-for="f in pluginOf(form.pluginId)?.fields ?? []" :key="f.key" :label="f.label" :help="f.help">
+          <UFormField v-for="f in pluginOf(form.pluginId)?.fields ?? []" :key="f.key" :label="f.label" :help="secretHelp(f)">
             <USelect v-if="f.type === 'select'" v-model="form.config[f.key]" :items="f.options ?? []" class="w-full" />
-            <UInput v-else v-model="form.config[f.key]" :type="f.secret ? 'text' : (f.type === 'url' ? 'url' : 'text')" :placeholder="f.placeholder" class="w-full" />
+            <SecretField v-else-if="f.secret" :model-value="form.config[f.key] ?? null" :default-name="f.defaultName" @update:model-value="(name: string | null) => (form.config[f.key] = name ?? '')" />
+            <UInput v-else v-model="form.config[f.key]" :type="f.type === 'url' ? 'url' : 'text'" :placeholder="f.placeholder" class="w-full" />
           </UFormField>
         </div>
       </template>

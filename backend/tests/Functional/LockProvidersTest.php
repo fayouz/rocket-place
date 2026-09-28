@@ -91,10 +91,10 @@ final class LockProvidersTest extends WebTestCase
         $this->api('POST', "/api/places/$port/connectors", ['pluginId' => 'nuki', 'name' => 'Nuki secondaire', 'config' => []], $this->admin);
         $this->assertStatus(400);
 
-        $created = $this->api('POST', "/api/places/$port/connectors", ['pluginId' => 'nuki', 'name' => 'Nuki secondaire', 'config' => ['secretVar' => 'CONNECTOR_NUKI_SALON']], $this->admin);
+        $created = $this->api('POST', "/api/places/$port/connectors", ['pluginId' => 'nuki', 'name' => 'Nuki secondaire', 'config' => ['secret' => 'connector_nuki_salon']], $this->admin);
         $this->assertStatus(201);
 
-        // The variable is not set in .env in this test environment: the "test" action fails clearly, no network call.
+        // The secret is neither in the vault nor in the former CONNECTOR_NUKI_SALON variable: the "test" action fails clearly, no network call.
         $this->api('POST', "/api/connectors/{$created['id']}/test", null, $this->admin);
         $this->assertStatus(400);
     }

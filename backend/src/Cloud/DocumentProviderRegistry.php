@@ -8,7 +8,7 @@ use App\Repository\ConnectorRepository;
 
 /**
  * Resolves the document provider of a place: the first enabled connector declaring the 'documents' capability
- * (App\Domotique\RocketCloudPlugin), or the single legacy ROCKET_CLOUD_URL/ROCKET_CLOUD_TOKEN (App\Cloud\CloudClient)
+ * (App\Domotique\RocketCloudPlugin), or the single legacy ROCKET_CLOUD_URL/secret rocket.cloud.token (App\Cloud\CloudClient)
  * when the place has none, so existing places keep working unchanged.
  */
 final class DocumentProviderRegistry
