@@ -1,32 +1,43 @@
 <script setup lang="ts">
 import type { CleaningTask, StockItem, StockLevel } from '~/types/place'
 
-// One cleaning, made for a phone: status buttons, checklist, photos (before/after/damage, straight from the camera),
-// stock levels of the place and notes. Every change is saved at once and the updated task is emitted.
-const props = defineProps<{ task: CleaningTask }>()
+// One cleaning, made for a phone: status buttons, checklist, photos (before/after/damage, straight from the camera,
+// with thumbnails and a lightbox), stock levels of the place and notes. Every change is saved at once and the updated
+// task is emitted. With "token" it works through the secret link without account (/api/public/cleaning/<token>);
+// with "manage" (administrator) it also shows the secret link to copy or regenerate.
+const props = defineProps<{ task: CleaningTask, token?: string, manage?: boolean, startOpen?: boolean }>()
 const emit = defineEmits<{ updated: [task: CleaningTask] }>()
 const api = useApi()
+const auth = useAuth()
+const config = useRuntimeConfig()
 const toast = useToast()
-const open = ref(false)
+const open = ref(props.startOpen ?? false)
 const busy = ref(false)
 const notes = ref(props.task.notes ?? '')
 watch(() => props.task.notes, v => notes.value = v ?? '')
 
 const doneCount = computed(() => props.task.checklist.filter(c => c.done).length)
 
-const { data: items } = useAsyncData('stock-items', () => api<StockItem[]>('/api/stock-items'), { default: () => [], immediate: false })
-const { data: levels, execute: loadLevels } = useAsyncData(`stock-levels-${props.task.placeId}`, () => api<StockLevel[]>('/api/stock-levels', { query: { place: `/api/places/${props.task.placeId}` } }), { default: () => [], immediate: false })
-const itemName = (iri: string) => items.value.find(i => `/api/stock-items/${i.id}` === iri)?.name ?? '?'
+// Stock levels of the place: given by the public view, else loaded (catalogue + levels) when the card opens.
+const items = ref<StockItem[]>([])
+const loaded = ref<StockLevel[]>([])
+const levels = computed<{ id: string, name: string, level: string }[]>(() => props.task.stock
+  ?? loaded.value.map(l => ({ id: l.id, name: items.value.find(i => `/api/stock-items/${i.id}` === l.item)?.name ?? '?', level: l.level })))
 watch(open, async (v) => {
-  if (v && !levels.value.length) {
-    await Promise.all([loadLevels(), items.value.length ? null : api<StockItem[]>('/api/stock-items').then(r => items.value = r)])
+  if (v && !props.token && !loaded.value.length) {
+    const [i, l] = await Promise.all([api<StockItem[]>('/api/stock-items'), api<StockLevel[]>('/api/stock-levels', { query: { place: `/api/places/${props.task.placeId}` } })])
+    items.value = i
+    loaded.value = l
   }
-})
+}, { immediate: true })
 
+const base = computed(() => props.token ? `/api/public/cleaning/${encodeURIComponent(props.token)}` : `/api/cleanings/${props.task.id}`)
 async function save(path: string, body: Record<string, unknown> | FormData, method: 'PATCH' | 'POST' = 'PATCH') {
   busy.value = true
   try {
-    emit('updated', await api<CleaningTask>(`/api/cleanings/${props.task.id}${path}`, { method, body }))
+    emit('updated', props.token
+      ? await $fetch<CleaningTask>(`${base.value}${path}`, { baseURL: config.public.apiBase as string, method, body, headers: { Accept: 'application/json' } })
+      : await api<CleaningTask>(`${base.value}${path}`, { method, body }))
   }
   catch (error) {
     toast.add({ title: 'Non enregistré', description: apiErrorMessage(error), color: 'error' })
@@ -40,9 +51,42 @@ const setStatus = (status: string) => save('', { status })
 const check = (index: number, done: boolean) => save('', { checklist: [{ index, done }] })
 const saveNotes = () => notes.value !== (props.task.notes ?? '') && save('', { notes: notes.value })
 
-async function setStock(level: StockLevel, value: string) {
+async function setStock(level: { id: string, level: string }, value: string) {
   await save('/stock', { stockLevelId: level.id, level: value }, 'POST')
-  level.level = value as StockLevel['level']
+  const l = loaded.value.find(x => x.id === level.id)
+  if (l) l.level = value as StockLevel['level']
+}
+
+// Photo thumbnails, loaded as blobs (the API needs the Authorization header, or the secret link), freed on unmount.
+const thumbs = reactive<Record<string, string>>({})
+const lightbox = ref<string | null>(null)
+async function loadThumb(fileId: string) {
+  if (thumbs[fileId]) return
+  try {
+    const url = props.token ? `${base.value}/photos/${fileId}` : `/api/places/${props.task.placeId}/documents/${fileId}/content`
+    const blob = await $fetch<Blob>(url, { baseURL: config.public.apiBase as string, responseType: 'blob', headers: props.token ? {} : { Authorization: auth.authorizationHeader() ?? '' } })
+    thumbs[fileId] = URL.createObjectURL(blob.type ? blob : new Blob([blob], { type: 'image/jpeg' }))
+  }
+  catch {
+    // Thumbnail unavailable (file removed from Rocket Cloud…): the name stays listed.
+  }
+}
+watch([open, () => props.task.photos.length], ([v]) => {
+  if (v) props.task.photos.forEach(p => loadThumb(p.fileId))
+}, { immediate: true })
+onBeforeUnmount(() => Object.values(thumbs).forEach(u => URL.revokeObjectURL(u)))
+
+// Secret link (administrators): copy, or regenerate (the previous one stops working).
+const link = ref<{ url: string, expiresAt: string } | null>(null)
+async function getLink(regenerate = false) {
+  try {
+    link.value = await api<{ url: string, expiresAt: string }>(`/api/cleanings/${props.task.id}/link`, { method: regenerate ? 'POST' : 'GET' })
+    await navigator.clipboard?.writeText(link.value.url).catch(() => null)
+    toast.add({ title: regenerate ? 'Nouveau lien copié' : 'Lien copié', description: regenerate ? 'L’ancien lien ne fonctionne plus.' : undefined, color: 'success' })
+  }
+  catch (error) {
+    toast.add({ title: 'Lien indisponible', description: apiErrorMessage(error), color: 'error' })
+  }
 }
 
 async function upload(event: Event, moment: string) {
@@ -100,15 +144,24 @@ async function upload(event: Event, moment: string) {
             </span>
           </label>
         </div>
-        <ul v-if="task.photos.length" class="mt-2 space-y-1 text-xs text-muted">
-          <li v-for="p in task.photos" :key="p.fileId">{{ PHOTO_MOMENT_LABEL[p.moment] }} · {{ whenFr(p.at) }} · {{ p.name }}</li>
-        </ul>
+        <div v-if="task.photos.length" class="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          <button v-for="p in task.photos" :key="p.fileId" type="button" class="text-left" :disabled="!thumbs[p.fileId]" @click="lightbox = p.fileId">
+            <img v-if="thumbs[p.fileId]" :src="thumbs[p.fileId]" :alt="p.name" class="aspect-square w-full rounded-md object-cover">
+            <span v-else class="flex aspect-square w-full items-center justify-center rounded-md bg-elevated"><UIcon name="i-lucide-image" class="text-muted" /></span>
+            <span class="block truncate text-xs" :class="p.moment === 'damage' ? 'text-error' : 'text-muted'">{{ PHOTO_MOMENT_LABEL[p.moment] }} · {{ whenFr(p.at) }}</span>
+          </button>
+        </div>
+        <UModal :open="lightbox !== null" title="Photo" @update:open="v => !v && (lightbox = null)">
+          <template #body>
+            <img v-if="lightbox && thumbs[lightbox]" :src="thumbs[lightbox]" alt="Photo du ménage" class="max-h-[75vh] w-full object-contain">
+          </template>
+        </UModal>
       </section>
 
       <section>
         <h3 class="mb-2 text-sm font-semibold">Stock</h3>
         <div v-for="l in levels" :key="l.id" class="flex min-h-11 items-center justify-between gap-2">
-          <span class="text-sm">{{ itemName(l.item) }}</span>
+          <span class="text-sm">{{ l.name }}</span>
           <div class="flex gap-1">
             <UButton
               v-for="lvl in ['ok', 'low', 'empty']" :key="lvl" size="sm" :color="l.level === lvl ? STOCK_LEVEL_COLOR[lvl] : 'neutral'"
@@ -122,6 +175,16 @@ async function upload(event: Event, moment: string) {
       <section>
         <h3 class="mb-2 text-sm font-semibold">Notes</h3>
         <UTextarea v-model="notes" :rows="3" class="w-full" placeholder="Dégât, oubli, remarque…" @blur="saveNotes" />
+      </section>
+
+      <section v-if="manage">
+        <h3 class="mb-2 text-sm font-semibold">Lien sans compte</h3>
+        <p class="mb-2 text-xs text-muted">Lien secret vers ce seul ménage, à envoyer à la personne qui le fait (valable jusqu’au lendemain de l’échéance).</p>
+        <div class="flex flex-wrap gap-2">
+          <UButton size="sm" variant="soft" icon="i-lucide-link" label="Copier le lien" @click="getLink()" />
+          <UButton size="sm" variant="ghost" icon="i-lucide-refresh-cw" label="Régénérer" @click="getLink(true)" />
+        </div>
+        <p v-if="link" class="mt-2 break-all font-mono text-xs text-muted">{{ link.url }}</p>
       </section>
     </div>
   </UCard>

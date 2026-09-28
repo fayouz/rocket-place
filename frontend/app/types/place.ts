@@ -117,4 +117,9 @@ export interface CleaningTask {
   stockReports: { stockLevelId: string, item: string, level: 'ok' | 'low' | 'empty', at: string }[]
   startedAt: string | null
   completedAt: string | null
+  /** Public view (secret link) only: stock levels of the place, and when the link expires. */
+  stock?: { id: string, name: string, level: 'ok' | 'low' | 'empty' }[]
+  expiresAt?: string
 }
+
+export interface CleaningAssignee { id: string, email: string, name: string }

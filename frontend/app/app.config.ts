@@ -15,6 +15,8 @@ export default defineAppConfig({
     icon: 'i-lucide-map-pin',
     // Login page subtitle.
     tagline: 'Tes lieux : serrures connectées, domotique, documents et stock — sans PMS.',
+    // Public pages (no account): a cleaning by its secret link.
+    publicPaths: ['/m/'],
     // Main menu: the domain pages ("label" entries start a group).
     navigation: [
       { label: 'Lieux', type: 'label' },
