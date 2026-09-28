@@ -39,7 +39,7 @@ final class HomeAssistantPlugin implements PluginInterface, LockCapablePluginInt
     {
         return [
             ['key' => 'baseUrl', 'label' => 'Adresse de Home Assistant', 'type' => 'url', 'required' => true, 'placeholder' => 'http://homeassistant.local:8123', 'help' => 'Réseau local ou https recommandé.'],
-            ['key' => 'secretVar', 'label' => 'Variable .env du jeton (accès longue durée)', 'type' => 'text', 'secret' => true, 'placeholder' => 'CONNECTOR_HA_SALON'],
+            ['key' => 'secret', 'label' => 'Jeton d’accès longue durée (coffre des secrets)', 'type' => 'secret', 'secret' => true, 'defaultName' => 'homeassistant.salon.token'],
             ['key' => 'lockServiceDomain', 'label' => 'Domaine du service de code clavier (optionnel)', 'type' => 'text', 'placeholder' => 'zwave_js', 'help' => 'Laisser vide si la serrure ne sait pas recevoir de code depuis Home Assistant (cas de Nuki).'],
             ['key' => 'lockService', 'label' => 'Nom du service de code clavier (optionnel)', 'type' => 'text', 'placeholder' => 'set_lock_usercode'],
         ];
@@ -52,8 +52,8 @@ final class HomeAssistantPlugin implements PluginInterface, LockCapablePluginInt
         if (!\is_string($host) || !preg_match('#^https?://#', $url)) {
             throw new HttpException(400, 'Adresse de Home Assistant invalide.');
         }
-        if ('' !== ($config['secretVar'] ?? '') && !SecretEnv::isValidName($config['secretVar'])) {
-            throw new HttpException(400, 'Le nom de variable doit commencer par CONNECTOR_ (majuscules, chiffres, _).');
+        if ('' !== ConnectorSecrets::nameIn($config) && !ConnectorSecrets::isValidName(ConnectorSecrets::nameIn($config))) {
+            throw new HttpException(400, 'Choisissez un secret du coffre (Administration → Secrets) ; les secrets propres à l’application sont interdits.');
         }
 
         return $config;

@@ -84,7 +84,7 @@ final class PlaceTest extends WebTestCase
         $list = $this->api('GET', "/api/places/$port/access-grants", null, $this->user);
         self::assertCount(1, $list);
 
-        // Sent in demo mode (no NUKI_API_TOKEN): rejected, never silently accepted.
+        // Sent in demo mode (no secret nuki.api_token): rejected, never silently accepted.
         $this->api('POST', "/api/access-grants/{$grant['id']}/send", null, $this->admin);
         $this->assertStatus(400);
 

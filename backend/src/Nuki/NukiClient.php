@@ -2,6 +2,7 @@
 
 namespace App\Nuki;
 
+use App\Secrets\IntegrationSecrets;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -9,7 +10,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Nuki web API: smart locks with their live state and last 5 events (cached 1 minute), and creation of a temporary
- * keypad code (writes to the lock: only called on an explicit user action). Without NUKI_API_TOKEN: demo locks.
+ * keypad code (writes to the lock: only called on an explicit user action). Without the secret nuki.api_token: demo locks.
  */
 final class NukiClient
 {
@@ -21,13 +22,19 @@ final class NukiClient
     public function __construct(
         private readonly HttpClientInterface $http,
         private readonly CacheInterface $cache,
-        private readonly string $nukiApiToken,
+        private readonly IntegrationSecrets|string $nukiApiToken,
     ) {
+    }
+
+    /** The token: fixed (per-connector client), or read at call time from the vault ("nuki.api_token", see App\Secrets\IntegrationSecrets). */
+    private function nukiApiToken(): string
+    {
+        return $this->nukiApiToken instanceof IntegrationSecrets ? $this->nukiApiToken->get('nuki.api_token') : $this->nukiApiToken;
     }
 
     public function isDemo(): bool
     {
-        return '' === $this->nukiApiToken;
+        return '' === $this->nukiApiToken();
     }
 
     /** @return list<array{id: int, name: string, state: string, locked: bool, battery: ?int, batteryCritical: bool, keypadBatteryCritical: bool, logs: list<array{date: string, who: string, action: int, trigger: int}>}> */
@@ -77,7 +84,7 @@ final class NukiClient
     private function request(string $method, string $path, array $options = []): array
     {
         $response = $this->http->request($method, self::BASE.$path, $options + [
-            'headers' => ['Authorization' => 'Bearer '.$this->nukiApiToken, 'Accept' => 'application/json'],
+            'headers' => ['Authorization' => 'Bearer '.$this->nukiApiToken(), 'Accept' => 'application/json'],
             'timeout' => 15,
         ]);
         $status = $response->getStatusCode();

@@ -31,7 +31,7 @@ const { data: plugins } = await useAsyncData('plugins-catalogue', () => api<Plug
           </div>
           <ul class="mt-2 space-y-0.5 text-xs text-muted">
             <li v-for="f in p.fields" :key="f.key">
-              {{ f.label }} <span v-if="f.required">*</span><span v-if="f.secret"> (variable .env)</span>
+              {{ f.label }} <span v-if="f.required">*</span><span v-if="f.secret"> (coffre des secrets)</span>
             </li>
           </ul>
         </UCard>

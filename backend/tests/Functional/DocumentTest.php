@@ -130,7 +130,7 @@ final class DocumentTest extends WebTestCase
         $this->assertStatus(200, 'no connector yet: legacy/demo client answers');
 
         $connector = $this->api('POST', "/api/places/$port/connectors", [
-            'pluginId' => 'rocketcloud', 'config' => ['url' => 'https://cloud.example.org', 'secretVar' => 'CONNECTOR_ROCKET_CLOUD_TEST'],
+            'pluginId' => 'rocketcloud', 'config' => ['url' => 'https://cloud.example.org', 'secret' => 'rocketcloud.test.token'],
         ], $this->admin);
         $this->assertStatus(201);
 
