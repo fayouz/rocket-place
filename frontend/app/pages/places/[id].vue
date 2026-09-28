@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Place } from '~/types/place'
 
-// A place: locks and access grants, domotique connectors, documents, stock.
+// A place: locks and access grants, domotique connectors, documents, stock, cleanings.
 const route = useRoute()
 const api = useApi()
 const id = computed(() => String(route.params.id))
@@ -13,6 +13,7 @@ const tabs = [
   { label: 'Domotique', value: 'domotique', icon: 'i-lucide-house-wifi' },
   { label: 'Documents', value: 'documents', icon: 'i-lucide-folder' },
   { label: 'Stock', value: 'stock', icon: 'i-lucide-package' },
+  { label: 'Ménage', value: 'menage', icon: 'i-lucide-sparkles' },
 ]
 const tab = computed({
   get: () => tabs.some(t => t.value === route.query.tab) ? String(route.query.tab) : 'locks',
@@ -43,6 +44,7 @@ const tab = computed({
       <DomotiqueTab v-else-if="tab === 'domotique'" :place-id="id" />
       <DocumentsTab v-else-if="tab === 'documents'" :place-id="id" />
       <StockTab v-else-if="tab === 'stock'" :place-id="id" />
+      <CleaningTab v-else-if="tab === 'menage'" :place-id="id" />
     </template>
   </UDashboardPanel>
 </template>

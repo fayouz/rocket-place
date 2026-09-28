@@ -1,6 +1,6 @@
 ---
 title: Rocket Place
-description: La gestion de tes locations courte durée — logements, réservations Lodgify, voyageurs, serrures connectées.
+description: Tes lieux — serrures connectées, domotique, documents, stock et ménage — sans PMS.
 seo:
   title: Rocket Place — Documentation
 ---
@@ -8,19 +8,19 @@ seo:
 ::u-page-hero
 ---
 orientation: horizontal
-title: Tes logements, tes voyageurs, tes serrures. Au même endroit.
+title: Tes lieux, leurs serrures, leur entretien. Au même endroit.
 ---
 #description
-Rocket Place réunit la gestion de tes locations courte durée : les **réservations Lodgify** de chaque logement présentées comme une boîte mail, la **conversation** avec le voyageur et la réponse, la **valeur** de chaque séjour, les **serrures Nuki** et leurs **codes clavier**, une **timeline** et un **tableau de bord**.
+Rocket Place gère tes **lieux** (logements, locaux, terrains…) sans PMS : **serrures connectées** et **autorisations d'accès**, **domotique** par connecteurs, **documents** dans Rocket Cloud, **stock** de consommables et **ménage** (checklist, photos, lien sans compte, e-mails). Un PMS peut le piloter par l'API.
 
 #links
   :::u-button
   ---
-  to: /usage/reservations
+  to: /usage/lieux
   size: xl
   trailing-icon: i-lucide-arrow-right
   ---
-  Les réservations
+  Les lieux
   :::
 
   :::u-button
