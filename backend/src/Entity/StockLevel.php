@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
@@ -50,11 +51,13 @@ class StockLevel
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(name: 'place_id', nullable: false, onDelete: 'CASCADE')]
     #[Groups(['stock_level:read', 'stock_level:write'])]
+    #[ApiProperty(readableLink: false)] // always an IRI, never embedded (the tracking group would otherwise embed it)
     private Place $place;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(name: 'item_id', nullable: false, onDelete: 'CASCADE')]
     #[Groups(['stock_level:read', 'stock_level:write'])]
+    #[ApiProperty(readableLink: false)] // always an IRI, never embedded (the tracking group would otherwise embed it)
     private StockItem $item;
 
     #[ORM\Column(length: 8)]
