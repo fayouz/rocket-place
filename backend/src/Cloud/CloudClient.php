@@ -2,6 +2,8 @@
 
 namespace App\Cloud;
 
+use Rocket\Core\Oidc\OidcException;
+use Rocket\Core\Suite\ServiceTokenProvider;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -13,11 +15,16 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * The browser never talks to Rocket Cloud directly: this app's controllers proxy every call, scoped to the
  * place's folder, so a PMS user never needs a Cloud account or token. Without ROCKET_CLOUD_URL/TOKEN: DemoCloud
  * (no network call at all, keeps functional tests offline as the other integrations do).
+ *
+ * Suite mode (ROCKET_AUTH_URL + ROCKET_AUTH_CLIENT_SECRET): the calls carry an access token of Rocket Auth obtained
+ * with the client credentials grant for the audience "rocket-cloud" (rocket-core ServiceTokenProvider) instead of
+ * ROCKET_CLOUD_TOKEN, which stays the fallback (standalone mode, or Rocket Auth unreachable).
  */
 final class CloudClient implements DocumentProviderInterface
 {
     private const TIMEOUT = 8;
     private const ROOT_FOLDER_NAME = 'Rocket PMS';
+    private const AUDIENCE = 'rocket-cloud';
 
     private ?string $rootFolderId = null;
 
@@ -26,12 +33,35 @@ final class CloudClient implements DocumentProviderInterface
         private readonly DemoCloud $demo,
         private readonly string $cloudUrl,
         private readonly string $cloudToken,
+        private readonly ?ServiceTokenProvider $serviceTokens = null,
     ) {
     }
 
     public function isDemo(): bool
     {
-        return '' === $this->cloudUrl || '' === $this->cloudToken;
+        return '' === $this->cloudUrl || ('' === $this->cloudToken && !$this->usesSuiteTokens());
+    }
+
+    /** Whether calls use tokens of Rocket Auth (suite mode) rather than the static ROCKET_CLOUD_TOKEN. */
+    public function usesSuiteTokens(): bool
+    {
+        return null !== $this->serviceTokens && $this->serviceTokens->isAvailable();
+    }
+
+    /** Bearer of the next call: a token of Rocket Auth in suite mode, else (or if Rocket Auth fails) the static token. */
+    private function bearer(): string
+    {
+        if ($this->usesSuiteTokens()) {
+            try {
+                return $this->serviceTokens->tokenForClient(self::AUDIENCE);
+            } catch (OidcException $e) {
+                if ('' === $this->cloudToken) {
+                    throw new HttpException(502, 'Rocket Auth ne délivre pas de jeton pour Rocket Cloud : '.$e->getMessage());
+                }
+            }
+        }
+
+        return $this->cloudToken;
     }
 
     /** Folder of a place, created (and its parent app root folder, if missing) on first use. */
@@ -173,7 +203,7 @@ final class CloudClient implements DocumentProviderInterface
         }
         try {
             $response = $this->http->request('GET', rtrim($this->cloudUrl, '/')."/api/files/{$fileId}/content", [
-                'headers' => ['Authorization' => 'Bearer '.$this->cloudToken],
+                'headers' => ['Authorization' => 'Bearer '.$this->bearer()],
                 'timeout' => self::TIMEOUT,
             ]);
 
@@ -206,7 +236,7 @@ final class CloudClient implements DocumentProviderInterface
      */
     private function request(string $method, string $path, ?array $json = null, ?array $query = null, ?array $multipart = null, ?string $fileName = null): array
     {
-        $options = ['headers' => ['Authorization' => 'Bearer '.$this->cloudToken, 'Accept' => 'application/json'], 'timeout' => self::TIMEOUT];
+        $options = ['headers' => ['Authorization' => 'Bearer '.$this->bearer(), 'Accept' => 'application/json'], 'timeout' => self::TIMEOUT];
         if (null !== $query) {
             $options['query'] = $query;
         }
@@ -228,6 +258,9 @@ final class CloudClient implements DocumentProviderInterface
             throw new HttpException(502, 'Rocket Cloud ne répond pas ou est injoignable depuis le serveur.');
         }
         if (401 === $status || 403 === $status) {
+            if ($this->usesSuiteTokens()) {
+                $this->serviceTokens->forget(self::AUDIENCE);
+            }
             throw new HttpException(502, 'Jeton Rocket Cloud refusé.');
         }
         if ($status >= 400) {
