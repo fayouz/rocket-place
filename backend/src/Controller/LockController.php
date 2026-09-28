@@ -20,7 +20,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
 /** Locks (live state, last events), their link to a place, and their access grants. */
-#[IsGranted('ROLE_USER')]
+#[IsGranted('PLACE_READ')]
 final class LockController extends AbstractController
 {
     public function __construct(

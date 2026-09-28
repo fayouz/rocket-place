@@ -22,7 +22,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * account or token; only an admin can write. Item ids exposed to the front are "folder:<id>" / "file:<id>" so
  * @rocket/file-explorer can tell them apart without the app knowing Rocket Cloud's own item shape.
  */
-#[IsGranted('ROLE_USER')]
+#[IsGranted('PLACE_READ')]
 final class DocumentController extends AbstractController
 {
     public function __construct(
@@ -47,7 +47,7 @@ final class DocumentController extends AbstractController
     }
 
     #[Route('/api/places/{id}/documents/folders', name: 'api_place_documents_create_folder', methods: ['POST'], requirements: ['id' => Requirement::UUID])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('PLACE_MANAGE')]
     public function createFolder(#[MapEntity] Place $place, Request $request): JsonResponse
     {
         $body = $request->toArray();
@@ -67,7 +67,7 @@ final class DocumentController extends AbstractController
     }
 
     #[Route('/api/places/{id}/documents/upload', name: 'api_place_documents_upload', methods: ['POST'], requirements: ['id' => Requirement::UUID])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('PLACE_MANAGE')]
     public function upload(#[MapEntity] Place $place, Request $request): JsonResponse
     {
         $file = $request->files->get('file');
@@ -87,7 +87,7 @@ final class DocumentController extends AbstractController
     }
 
     #[Route('/api/places/{id}/documents/{itemId}', name: 'api_place_documents_update', methods: ['PATCH'], requirements: ['id' => Requirement::UUID])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('PLACE_MANAGE')]
     public function update(#[MapEntity] Place $place, string $itemId, Request $request): JsonResponse
     {
         [$kind, $id] = $this->splitItemId($itemId);
@@ -114,7 +114,7 @@ final class DocumentController extends AbstractController
     }
 
     #[Route('/api/places/{id}/documents/{itemId}', name: 'api_place_documents_delete', methods: ['DELETE'], requirements: ['id' => Requirement::UUID])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('PLACE_MANAGE')]
     public function delete(#[MapEntity] Place $place, string $itemId, Request $request): JsonResponse
     {
         [$kind, $id] = $this->splitItemId($itemId);

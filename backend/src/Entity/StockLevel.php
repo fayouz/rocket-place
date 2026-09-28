@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
@@ -28,13 +29,13 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new GetCollection(uriTemplate: '/stock-levels'),
         new Get(uriTemplate: '/stock-levels/{id}'),
-        new Post(uriTemplate: '/stock-levels', security: "is_granted('ROLE_USER')"),
-        new Patch(uriTemplate: '/stock-levels/{id}', security: "is_granted('ROLE_USER')"),
-        new Delete(uriTemplate: '/stock-levels/{id}', security: "is_granted('ROLE_USER')"),
+        new Post(uriTemplate: '/stock-levels', security: "is_granted('PLACE_READ')"),
+        new Patch(uriTemplate: '/stock-levels/{id}', security: "is_granted('PLACE_READ')"),
+        new Delete(uriTemplate: '/stock-levels/{id}', security: "is_granted('PLACE_READ')"),
     ],
     normalizationContext: ['groups' => ['stock_level:read', 'tracking']],
     denormalizationContext: ['groups' => ['stock_level:write']],
-    security: "is_granted('ROLE_USER')",
+    security: "is_granted('PLACE_READ')",
     paginationEnabled: false,
 )]
 #[ApiFilter(SearchFilter::class, properties: ['place' => 'exact', 'item' => 'exact'])]
@@ -50,11 +51,13 @@ class StockLevel
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(name: 'place_id', nullable: false, onDelete: 'CASCADE')]
     #[Groups(['stock_level:read', 'stock_level:write'])]
+    #[ApiProperty(readableLink: false)] // always an IRI, never embedded (the tracking group would otherwise embed it)
     private Place $place;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(name: 'item_id', nullable: false, onDelete: 'CASCADE')]
     #[Groups(['stock_level:read', 'stock_level:write'])]
+    #[ApiProperty(readableLink: false)] // always an IRI, never embedded (the tracking group would otherwise embed it)
     private StockItem $item;
 
     #[ORM\Column(length: 8)]

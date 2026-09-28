@@ -16,6 +16,7 @@ use Symfony\Component\Uid\Uuid;
  */
 #[ORM\Entity(repositoryClass: AccessGrantRepository::class)]
 #[ORM\UniqueConstraint(name: 'uniq_access_grant_lock_code', columns: ['lock_id', 'code'])]
+#[ORM\UniqueConstraint(name: 'uniq_access_grant_place_external_ref', columns: ['place_id', 'external_ref'])]
 class AccessGrant
 {
     public const PLANNED = 'planned';
