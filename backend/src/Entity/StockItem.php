@@ -26,13 +26,13 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new GetCollection(uriTemplate: '/stock-items'),
         new Get(uriTemplate: '/stock-items/{id}'),
-        new Post(uriTemplate: '/stock-items', security: "is_granted('ROLE_ADMIN')"),
-        new Patch(uriTemplate: '/stock-items/{id}', security: "is_granted('ROLE_ADMIN')"),
-        new Delete(uriTemplate: '/stock-items/{id}', security: "is_granted('ROLE_ADMIN')"),
+        new Post(uriTemplate: '/stock-items', security: "is_granted('PLACE_MANAGE')"),
+        new Patch(uriTemplate: '/stock-items/{id}', security: "is_granted('PLACE_MANAGE')"),
+        new Delete(uriTemplate: '/stock-items/{id}', security: "is_granted('PLACE_MANAGE')"),
     ],
     normalizationContext: ['groups' => ['stock_item:read', 'tracking']],
     denormalizationContext: ['groups' => ['stock_item:write']],
-    security: "is_granted('ROLE_USER')",
+    security: "is_granted('PLACE_READ')",
     order: ['name' => 'ASC'],
     paginationEnabled: false,
 )]

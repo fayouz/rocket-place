@@ -24,12 +24,12 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new GetCollection(uriTemplate: '/places'),
         new Get(uriTemplate: '/places/{id}'),
-        new Post(uriTemplate: '/places', security: "is_granted('ROLE_ADMIN')"),
-        new Patch(uriTemplate: '/places/{id}', security: "is_granted('ROLE_ADMIN')"),
+        new Post(uriTemplate: '/places', security: "is_granted('PLACE_MANAGE')"),
+        new Patch(uriTemplate: '/places/{id}', security: "is_granted('PLACE_MANAGE')"),
     ],
     normalizationContext: ['groups' => ['place:read', 'tracking']],
     denormalizationContext: ['groups' => ['place:write']],
-    security: "is_granted('ROLE_USER')",
+    security: "is_granted('PLACE_READ')",
     order: ['name' => 'ASC'],
     paginationEnabled: false,
 )]

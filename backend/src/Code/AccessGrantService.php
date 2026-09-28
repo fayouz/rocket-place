@@ -28,10 +28,14 @@ final class AccessGrantService
     ) {
     }
 
+    /** Idempotent per (place, externalRef): planning twice for the same client reference returns the first grant. */
     public function plan(Place $place, SmartLock $lock, string $label, \DateTimeImmutable $from, \DateTimeImmutable $until, ?string $externalRef = null): AccessGrant
     {
         if ($until <= $from) {
             throw new HttpException(422, $this->translator->trans('access_grant.invalid_dates'));
+        }
+        if (null !== $externalRef && null !== ($existing = $this->grants->findOneByExternalRef($place, $externalRef))) {
+            return $existing;
         }
         $grant = new AccessGrant($place, $lock, $label, $this->newCode($lock), $from, $until, $externalRef);
         $this->em->persist($grant);

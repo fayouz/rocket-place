@@ -46,6 +46,7 @@ final class StockTest extends WebTestCase
         self::assertSame('low', $updated['level']);
 
         $levels = $this->api('GET', '/api/stock-levels?'.http_build_query(['place' => "/api/places/$place"]), null, $this->user);
+        self::assertSame("/api/stock-items/{$item['id']}", $levels[0]['item'], 'relations are IRIs, never embedded');
         self::assertNotEmpty($levels);
 
         $this->api('DELETE', "/api/stock-levels/{$level['id']}", null, $this->user);

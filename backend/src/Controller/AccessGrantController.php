@@ -17,7 +17,7 @@ use Symfony\Component\Routing\Requirement\Requirement;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /** Access grants (temporary keypad codes) of a place: list/plan/send/revoke. Send never happens implicitly. */
-#[IsGranted('ROLE_USER')]
+#[IsGranted('PLACE_READ')]
 final class AccessGrantController extends AbstractController
 {
     public function __construct(
@@ -33,9 +33,9 @@ final class AccessGrantController extends AbstractController
         return $this->json(array_map(static fn (AccessGrant $g) => $g->toArray(), $this->repository->forPlace($place)));
     }
 
-    /** JSON {"lockId": int, "label": string, "validFrom": ISO-8601, "validUntil": ISO-8601, "externalRef"?: string|null}. Only plans the grant. */
+    /** JSON {"lockId": int, "label": string, "validFrom": ISO-8601, "validUntil": ISO-8601, "externalRef"?: string|null}. Only plans the grant; find-or-create by externalRef (200 with the existing grant). */
     #[Route('/api/places/{id}/access-grants', name: 'api_place_access_grants_plan', methods: ['POST'], requirements: ['id' => Requirement::UUID])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('PLACE_MANAGE')]
     public function plan(#[MapEntity] Place $place, Request $request): JsonResponse
     {
         $body = $request->toArray();
@@ -51,21 +51,22 @@ final class AccessGrantController extends AbstractController
             throw new HttpException(422, 'Dates invalides.');
         }
         $externalRef = null === ($body['externalRef'] ?? null) ? null : mb_substr((string) $body['externalRef'], 0, 120);
+        $existing = null === $externalRef ? null : $this->repository->findOneByExternalRef($place, $externalRef);
         $grant = $this->grants->plan($place, $lock, $label, $from, $until, $externalRef);
 
-        return $this->json($grant->toArray(), 201);
+        return $this->json($grant->toArray(), null === $existing ? 201 : 200);
     }
 
     /** Writes the code to the physical lock (explicit action, never called from tests). */
     #[Route('/api/access-grants/{id}/send', name: 'api_access_grant_send', methods: ['POST'], requirements: ['id' => Requirement::UUID])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('PLACE_MANAGE')]
     public function send(#[MapEntity] AccessGrant $grant): JsonResponse
     {
         return $this->json($this->grants->send($grant)->toArray());
     }
 
     #[Route('/api/access-grants/{id}/revoke', name: 'api_access_grant_revoke', methods: ['POST'], requirements: ['id' => Requirement::UUID])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('PLACE_MANAGE')]
     public function revoke(#[MapEntity] AccessGrant $grant): JsonResponse
     {
         return $this->json($this->grants->revoke($grant)->toArray());

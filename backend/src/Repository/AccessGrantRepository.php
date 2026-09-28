@@ -20,4 +20,9 @@ class AccessGrantRepository extends ServiceEntityRepository
     {
         return $this->findBy(['place' => $place], ['validFrom' => 'ASC']);
     }
+
+    public function findOneByExternalRef(Place $place, string $externalRef): ?AccessGrant
+    {
+        return $this->findOneBy(['place' => $place, 'externalRef' => $externalRef]);
+    }
 }
