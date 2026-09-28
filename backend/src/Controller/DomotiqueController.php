@@ -13,7 +13,7 @@ use Symfony\Component\Routing\Requirement\Requirement;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /** "Domotique" tab of a place: info cards of every enabled connector (any category, e.g. Homey, Service web). Read-only. */
-#[IsGranted('ROLE_USER')]
+#[IsGranted('PLACE_READ')]
 final class DomotiqueController extends AbstractController
 {
     public function __construct(

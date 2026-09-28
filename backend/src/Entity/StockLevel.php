@@ -28,13 +28,13 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new GetCollection(uriTemplate: '/stock-levels'),
         new Get(uriTemplate: '/stock-levels/{id}'),
-        new Post(uriTemplate: '/stock-levels', security: "is_granted('ROLE_USER')"),
-        new Patch(uriTemplate: '/stock-levels/{id}', security: "is_granted('ROLE_USER')"),
-        new Delete(uriTemplate: '/stock-levels/{id}', security: "is_granted('ROLE_USER')"),
+        new Post(uriTemplate: '/stock-levels', security: "is_granted('PLACE_READ')"),
+        new Patch(uriTemplate: '/stock-levels/{id}', security: "is_granted('PLACE_READ')"),
+        new Delete(uriTemplate: '/stock-levels/{id}', security: "is_granted('PLACE_READ')"),
     ],
     normalizationContext: ['groups' => ['stock_level:read', 'tracking']],
     denormalizationContext: ['groups' => ['stock_level:write']],
-    security: "is_granted('ROLE_USER')",
+    security: "is_granted('PLACE_READ')",
     paginationEnabled: false,
 )]
 #[ApiFilter(SearchFilter::class, properties: ['place' => 'exact', 'item' => 'exact'])]
