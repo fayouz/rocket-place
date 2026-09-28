@@ -97,3 +97,24 @@ export interface StockLevel {
   item: string // IRI
   level: 'ok' | 'low' | 'empty'
 }
+
+export type CleaningStatus = 'todo' | 'in_progress' | 'done' | 'cancelled'
+
+export interface CleaningTask {
+  id: string
+  placeId: string
+  placeName: string
+  label: string
+  scheduledAt: string
+  dueAt: string | null
+  status: CleaningStatus
+  late: boolean
+  assignee: { id: string, email: string, name: string } | null
+  externalRef: string | null
+  notes: string | null
+  checklist: { label: string, done: boolean }[]
+  photos: { fileId: string, name: string, moment: 'before' | 'after' | 'damage', at: string }[]
+  stockReports: { stockLevelId: string, item: string, level: 'ok' | 'low' | 'empty', at: string }[]
+  startedAt: string | null
+  completedAt: string | null
+}

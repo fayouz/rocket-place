@@ -19,6 +19,7 @@ export default defineAppConfig({
     navigation: [
       { label: 'Lieux', type: 'label' },
       { label: 'Tous les lieux', icon: 'i-lucide-map-pin', to: '/places', exact: true },
+      { label: 'Ménage', icon: 'i-lucide-sparkles', to: '/menage' },
     ] as { label: string, icon?: string, to?: string, type?: 'label', exact?: boolean, exactQuery?: boolean, admin?: boolean }[],
     // Extra entries of the Administration menu.
     adminNavigation: [
