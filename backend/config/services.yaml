@@ -1,0 +1,22 @@
+parameters:
+    env(UPDATE_REPOSITORY): 'fayouz/rocket-place'
+    env(NUKI_API_TOKEN): ''
+    env(ROCKET_CLOUD_URL): ''
+    env(ROCKET_CLOUD_TOKEN): ''
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        bind:
+            $nukiApiToken: '%env(NUKI_API_TOKEN)%'
+            $cloudUrl: '%env(ROCKET_CLOUD_URL)%'
+            $cloudToken: '%env(ROCKET_CLOUD_TOKEN)%'
+            $storagePath: '%kernel.project_dir%/var/demo-cloud.json'
+
+    App\:
+        resource: '../src/'
+
+when@test:
+    services:
+        App\Tests\Support\HttpMock: ~

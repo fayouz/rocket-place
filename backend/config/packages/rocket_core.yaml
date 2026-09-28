@@ -1,0 +1,4 @@
+rocket_core:
+    app_name: Rocket Place
+    app_id: place
+    token_prefix: rpl_
