@@ -1,6 +1,6 @@
 # Rocket Place
 
-Gestion de **lieux** (logements, locaux, terrains…), utilisable sans aucun PMS : **lieux** (nom, adresse, couleur, coordonnées), **connecteurs/domotique** pluggables (Homey, Home Assistant, Nuki, Rocket Cloud, service web), **serrures connectées** (état, batterie, historique) avec des **autorisations d'accès** génériques (code clavier temporaire, planifié puis envoyé sur action explicite), **documents** par lieu dans Rocket Cloud, et un **stock de consommables/équipement** par lieu. Brique du Middleware Rocket, sur le socle [rocket-core](https://github.com/fayouz/rocket-core).
+Gestion de **lieux** (logements, locaux, terrains…), utilisable sans aucun PMS : **lieux** (nom, adresse, couleur, coordonnées), **connecteurs/domotique** pluggables (Homey, Home Assistant, Nuki, Rocket Cloud, service web), **serrures connectées** (état, batterie, historique) avec des **autorisations d'accès** génériques (code clavier temporaire, planifié puis envoyé sur action explicite), **documents** par lieu dans Rocket Cloud, un **stock de consommables/équipement** par lieu et le **ménage** (tâches par lieu, checklist, photos, relevés de stock ; créables par un PMS). Brique du Middleware Rocket, sur le socle [rocket-core](https://github.com/fayouz/rocket-core).
 
 | Dossier | Stack |
 |---|---|
@@ -43,7 +43,19 @@ cd frontend && npm install && NUXT_PUBLIC_API_BASE=http://localhost:8900 npm run
 |---|---|
 | `NUKI_API_TOKEN` | Jeton de l'API web Nuki (compte historique) ; le droit `smartlock.auth` est nécessaire pour créer les codes. Vide : démo. |
 | `ROCKET_CLOUD_URL` / `ROCKET_CLOUD_TOKEN` | Compte Rocket Cloud historique pour les documents. Vide : démo. |
+| `ROCKET_AUTH_URL`, `ROCKET_AUTH_INTERNAL_URL`, `ROCKET_AUTH_CLIENT_ID` (`rocket-place`), `ROCKET_AUTH_CLIENT_SECRET`, `ROCKET_AUTH_ADMIN_GROUP`, `ROCKET_PUBLIC_URL`, `ROCKET_INTERNAL_URL` | Mode suite (voir ci-dessous). `ROCKET_AUTH_URL` vide : mode autonome, inchangé. |
 | `CONNECTOR_*` | Une variable par secret de connecteur (nom choisi à la création du connecteur, jamais la valeur en base). |
+
+## Mode suite (Rocket Auth)
+
+Avec `ROCKET_AUTH_URL`, Rocket Place rejoint la suite Rocket (mécanisme de rocket-core) : connexion par Rocket Auth uniquement, sélecteur des applications et « Mon compte » dans le menu, déconnexion propagée (RP-initiated logout et back-channel logout sur `ROCKET_INTERNAL_URL`). Rocket Auth doit déclarer le client `rocket-place` (redirect `<interface>/auth/callback`, retour de déconnexion `<interface>/login?logged_out=1`).
+
+Appels entre applications (client credentials, `Rocket\Core\Suite\ServiceTokenProvider`) :
+
+- **Place → Rocket Cloud** (documents) : jeton Rocket Auth d'audience `rocket-cloud` à la place de `ROCKET_CLOUD_TOKEN`, qui reste le repli (mode autonome ou Rocket Auth injoignable). Dans Rocket Cloud, un administrateur lie une application au client `rocket-place` (champ « Client Rocket Auth »).
+- **Rocket PMS → Place** : Place accepte les jetons Rocket Auth d'audience `rocket-place` émis pour un client lié à une application (Administration → Applications, champ « Client Rocket Auth », ex. `rocket-pms`). Ils donnent les mêmes droits qu'un jeton `rpl_…` : routes métier ouvertes par `PlaceScopeGuardListener` / `PlaceAccessVoter`.
+
+Environnement complet (Auth, Cloud, Place, PMS) : `compose.suite.yaml` de rocket-pms.
 
 ## Fonctionnalités (v0.1)
 
@@ -53,7 +65,8 @@ cd frontend && npm install && NUXT_PUBLIC_API_BASE=http://localhost:8900 npm run
 - **Autorisations d'accès** (`AccessGrant`) : génériques (pas liées à un PMS), avec une référence externe libre optionnelle (ex. un id de réservation côté client) ; cycle **planifiée → envoyée (code écrit sur la serrure, action explicite) → révoquée**.
 - **Documents** par lieu dans Rocket Cloud (dossier créé à la demande, contrôle d'appartenance à l'arborescence du lieu).
 - **Stock** de consommables/équipement : catalogue global d'articles (nom, ASIN Amazon, quantité de réassort, abonnement), niveau (OK/Bas/Vide) suivi par lieu.
-- **Tableau de bord** : nombre de lieux/serrures, alertes de stock, prochaines autorisations d'accès ; état des services Nuki et Homey.
+- **Ménage** : tâches par lieu (fenêtre, statut, personne attribuée), checklist recopiée du modèle du lieu, photos avant/après/dégât dans Rocket Cloud, relevés de stock ; page téléphone « Mes ménages du jour » ; création idempotente par une application via `externalRef` (`POST /api/places/{id}/cleanings`) ; lien secret sans compte `/m/<jeton>` limité au ménage ; e-mails via Rocket Mailer (attribution, retards, bilan du jour ; `ROCKET_MAILER_URL`, `ROCKET_MAILER_TOKEN`, `ROCKET_MAILER_MAILBOX`, `ROCKET_MAILER_SENDER`, démo sans réseau).
+- **Tableau de bord** : nombre de lieux/serrures, alertes de stock, ménages du jour et en retard, prochaines autorisations d'accès ; état des services Nuki et Homey.
 - **API** pour les applications externes (jeton `rpl_…`), par exemple un PMS côté client.
 
 ## Gitflow

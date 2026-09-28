@@ -2,6 +2,16 @@
 
 Toutes les évolutions notables de Rocket Place. Format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), versions [SemVer](https://semver.org/lang/fr/).
 
+## [0.2.0] - 2026-09-28
+
+### Ajouté
+- Ménage par lieu (`CleaningTask`) : fenêtre, statut, personne attribuée, checklist recopiée depuis le modèle du lieu, notes, photos avant/après/dégât rangées dans le dossier Rocket Cloud du lieu, relevés de stock (mettent à jour `StockLevel`). Création manuelle ou par une application (ex. PMS après un départ) avec `externalRef` idempotente, unique par lieu. Page « Ménage » pour téléphone (ménages du jour et en retard), onglet « Ménage » d'un lieu (planification, checklist), tableau de bord (ménages du jour, en retard), données de démo.
+- Ménage : vignettes des photos et agrandissement ; choix de la personne parmi les comptes (`GET /api/cleaning-assignees`, admin) ; **lien secret sans compte** `/m/<jeton>` limité à un ménage (jeton HMAC 128 bits, expire le lendemain de l'échéance, copie/régénération/révocation par l'admin, `/api/public/cleaning/{token}` limité en débit, `no-store`/`noindex`) ; **e-mails via Rocket Mailer** (`MailerClient`, repli démo sans réseau, mode suite par jeton Rocket Auth) : attribution avec le lien, ménages en retard (8 h) et bilan du jour (20 h) aux administrateurs, désactivables (`/api/cleaning-settings`). Variables `ROCKET_MAILER_URL`, `ROCKET_MAILER_TOKEN`, `ROCKET_MAILER_MAILBOX`, `ROCKET_MAILER_SENDER`. Migration : `cleaning_task.link_salt`.
+- Documentation : pages d'usage et d'API réécrites pour Rocket Place (les pages héritées du PMS — réservations, timeline, `/api/properties` — sont retirées).
+- Mode suite documenté (Rocket Auth : connexion, sélecteur d'applications, déconnexion ; variables `ROCKET_AUTH_*`, `ROCKET_PUBLIC_URL`, `ROCKET_INTERNAL_URL`).
+- Documents : en mode suite, Rocket Place appelle Rocket Cloud avec un jeton Rocket Auth (client credentials, audience `rocket-cloud`) ; `ROCKET_CLOUD_TOKEN` reste le repli.
+- Les jetons Rocket Auth d'un client lié à une application (ex. `rocket-pms`) ont accès aux routes métier comme un jeton `rpl_…`.
+
 ## [0.1.0] - 2026-09-28
 
 ### Ajouté

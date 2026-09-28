@@ -74,9 +74,10 @@ class Place
 
     use TrackedTrait;
 
-    public function __construct()
+    /** $id: only for fixed, well-known ids (demo places shared by every brick); a new v7 otherwise. */
+    public function __construct(?Uuid $id = null)
     {
-        $this->id = Uuid::v7();
+        $this->id = $id ?? Uuid::v7();
     }
 
     public function getId(): Uuid { return $this->id; }
