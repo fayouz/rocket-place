@@ -2,6 +2,13 @@
 
 Toutes les évolutions notables de Rocket Place. Format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), versions [SemVer](https://semver.org/lang/fr/).
 
+## [Non publié]
+
+### Ajouté
+- Mode suite documenté (Rocket Auth : connexion, sélecteur d'applications, déconnexion ; variables `ROCKET_AUTH_*`, `ROCKET_PUBLIC_URL`, `ROCKET_INTERNAL_URL`).
+- Documents : en mode suite, Rocket Place appelle Rocket Cloud avec un jeton Rocket Auth (client credentials, audience `rocket-cloud`) ; `ROCKET_CLOUD_TOKEN` reste le repli.
+- Les jetons Rocket Auth d'un client lié à une application (ex. `rocket-pms`) ont accès aux routes métier comme un jeton `rpl_…`.
+
 ## [0.1.0] - 2026-09-28
 
 ### Ajouté
