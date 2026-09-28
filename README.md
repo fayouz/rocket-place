@@ -69,6 +69,20 @@ Environnement complet (Auth, Cloud, Place, PMS) : `compose.suite.yaml` de rocket
 - **Tableau de bord** : nombre de lieux/serrures, alertes de stock, ménages du jour et en retard, prochaines autorisations d'accès ; état des services Nuki et Homey.
 - **API** pour les applications externes (jeton `rpl_…`), par exemple un PMS côté client.
 
+## Images Docker
+
+Publiées par la CI (workflow réutilisable `docker-images.yml` de rocket-core) **uniquement** sur tag `vX.Y.Z` et lancement manuel (Actions → CI → Run workflow) :
+
+| Image | Contenu |
+| --- | --- |
+| `ghcr.io/fayouz/rocket-place-api` | API Symfony + worker (FrankenPHP Alpine, `composer --no-dev`, opcache, cible `prod` de `backend/Dockerfile`) |
+| `ghcr.io/fayouz/rocket-place-front` | Front Nuxt (`.output` seul, `node:22-alpine`, utilisateur `node`, cible `prod` de `frontend/Dockerfile`) |
+
+- Tags : `vX.Y.Z`, `X.Y.Z`, `X.Y`, `latest` (dernier tag) et `sha-<commit>` ; multi-arch `linux/amd64` + `linux/arm64` ; labels OCI (source, version, révision), SBOM et provenance.
+- Sur les PR et branches : build `linux/amd64` de validation + tests de fumée, jamais poussé.
+- Le dépôt est privé : les images sont **privées** (visibilité par défaut, à garder). Plan GitHub Free : 500 Mo de stockage et 1 Go/mois de transfert pour les paquets privés (au-delà : facturé ou bloqué) — supprimer les anciennes versions (`sha-…`) et ne publier que sur tag. Pour tirer les images : `docker login ghcr.io` avec un jeton `read:packages`.
+- Exemple de déploiement : [`compose.prod.yaml`](compose.prod.yaml) (base, API, worker, front, labels Traefik en commentaire).
+
 ## Gitflow
 
 `main` : production ; `develop` : intégration ; `feature/*` → `develop` (section `[Non publié]` du [CHANGELOG](CHANGELOG.md)) ; `release/*` et `hotfix/*` → `main`, puis tag `vX.Y.Z` créé depuis GitHub.
